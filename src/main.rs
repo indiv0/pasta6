@@ -15,9 +15,26 @@ async fn create_db_connection() -> Result<tokio_postgres::Client, tokio_postgres
     Ok(client)
 }
 
+async fn init_db(client: &tokio_postgres::Client) -> Result<(), tokio_postgres::Error> {
+    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS pastes
+(
+    id SERIAL PRIMARY KEY NOT NULL,
+    name VARCHAR(8),
+    created_at timestamp with time zone DEFAULT (now() at time zone 'utc')
+)"#;
+
+    let _rows = client
+        .query(INIT_SQL, &[])
+        .await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
-    let _client = create_db_connection().await?;
+    let client = create_db_connection().await.expect("create connection error");
+
+    init_db(&client).await.expect("initialize database error");
 
     let health = warp::path!("health")
         .map(|| warp::http::StatusCode::OK);
