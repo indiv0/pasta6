@@ -2,6 +2,9 @@ use warp::Filter;
 
 #[tokio::main]
 async fn main() {
+    let health = warp::path!("health")
+        .map(|| warp::http::StatusCode::OK);
+
     let paste = warp::post()
         .and(warp::path("paste"))
         // Only accept bodies smaller than 16kb
@@ -11,7 +14,10 @@ async fn main() {
             format!("bytes = {:?}", bytes)
         });
 
-    warp::serve(paste)
+    let routes = health
+        .or(paste);
+
+    warp::serve(routes)
         .run(([127, 0, 0, 1], 3030))
         .await;
 }
