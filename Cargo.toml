@@ -1,0 +1,9 @@
+[package]
+name = "pastaaaaaa"
+version = "0.1.0"
+authors = ["Nikita Pekin <contact@nikitapek.in>"]
+edition = "2018"
+
+[dependencies]
+tokio = { version = "0.2.22", features = ["macros"] }
+warp = "0.2.4"
