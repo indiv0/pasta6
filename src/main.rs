@@ -6,34 +6,38 @@ use tokio_postgres::Client as DbClient;
 use warp::Filter;
 use warp::http::StatusCode;
 
-async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
-    // Connect to the database.
-    let (client, conn) = tokio_postgres::connect("host=localhost user=pastaaaaaa password=pastaaaaaa", tokio_postgres::NoTls).await?;
+mod db {
+    use tokio_postgres::Client as DbClient;
 
-    // The connection object performs the communication with the database,
-    // so spawn it off to run on its own.
-    tokio::spawn(async move {
-        if let Err(e) = conn.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
+    pub async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
+        // Connect to the database.
+        let (client, conn) = tokio_postgres::connect("host=localhost user=pastaaaaaa password=pastaaaaaa", tokio_postgres::NoTls).await?;
 
-    Ok(client)
-}
+        // The connection object performs the communication with the database,
+        // so spawn it off to run on its own.
+        tokio::spawn(async move {
+            if let Err(e) = conn.await {
+                eprintln!("connection error: {}", e);
+            }
+        });
 
-async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
-    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
-(
-    id SERIAL PRIMARY KEY NOT NULL,
-    created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
-    data bytea
-)"#;
+        Ok(client)
+    }
 
-    let _rows = client
-        .query(INIT_SQL, &[])
-        .await?;
+    pub async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
+        const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
+    (
+        id SERIAL PRIMARY KEY NOT NULL,
+        created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+        data bytea
+    )"#;
 
-    Ok(())
+        let _rows = client
+            .query(INIT_SQL, &[])
+            .await?;
+
+        Ok(())
+    }
 }
 
 fn with_db(client: Arc<DbClient>) -> impl Filter<Extract = (Arc<DbClient>,), Error = Infallible> + Clone {
@@ -97,9 +101,9 @@ async fn health_handler(client: Arc<DbClient>) -> Result<impl warp::Reply, warp:
 
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
-    let client = Arc::new(create_db_connection().await.expect("create connection error"));
+    let client = Arc::new(db::create_db_connection().await.expect("create connection error"));
 
-    init_db(&client).await.expect("initialize database error");
+    db::init_db(&client).await.expect("initialize database error");
 
     let health = warp::path!("health")
         .and(with_db(client))
