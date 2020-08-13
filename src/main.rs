@@ -25,8 +25,8 @@ async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
     const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
 (
     id SERIAL PRIMARY KEY NOT NULL,
-    name VARCHAR(8),
-    created_at timestamp with time zone DEFAULT (now() at time zone 'utc')
+    created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+    data bytea
 )"#;
 
     let _rows = client
