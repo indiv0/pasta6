@@ -10,3 +10,6 @@ serde_derive = "1.0.115"
 tokio = { version = "0.2.22", features = ["macros"] }
 tokio-postgres = "0.5.5"
 warp = "0.2.4"
+
+[profile.dev.package."*"]
+opt-level = 2
