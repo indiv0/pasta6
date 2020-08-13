@@ -38,7 +38,8 @@ mod db {
 }
 
 mod filter {
-    use crate::{Error, ErrorResponse};
+    use crate::ErrorResponse;
+    use crate::error::Error;
     use std::convert::Infallible;
     use std::sync::Arc;
     use tokio_postgres::Client as DbClient;
@@ -93,17 +94,19 @@ mod filter {
     }
 }
 
+mod error {
+    #[derive(Debug)]
+    pub enum Error {
+        DbQueryError(tokio_postgres::Error),
+    }
+
+    impl warp::reject::Reject for Error {}
+}
+
 #[derive(Serialize)]
 struct ErrorResponse {
     message: String,
 }
-
-#[derive(Debug)]
-enum Error {
-    DbQueryError(tokio_postgres::Error),
-}
-
-impl warp::reject::Reject for Error {}
 
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
