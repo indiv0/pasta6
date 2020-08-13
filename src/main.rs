@@ -1,5 +1,4 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
-use serde_derive::Serialize;
 use std::sync::Arc;
 use warp::Filter;
 
@@ -38,8 +37,8 @@ mod db {
 }
 
 mod filter {
-    use crate::ErrorResponse;
     use crate::error::Error;
+    use crate::models::ErrorResponse;
     use std::convert::Infallible;
     use std::sync::Arc;
     use tokio_postgres::Client as DbClient;
@@ -86,9 +85,7 @@ mod filter {
             message = "Internal server error";
         }
 
-        let json = warp::reply::json(&ErrorResponse {
-            message: message.into(),
-        });
+        let json = warp::reply::json(&ErrorResponse::new(message.into()));
 
         Ok(warp::reply::with_status(json, code))
     }
@@ -103,9 +100,19 @@ mod error {
     impl warp::reject::Reject for Error {}
 }
 
-#[derive(Serialize)]
-struct ErrorResponse {
-    message: String,
+mod models {
+    use serde_derive::Serialize;
+
+    #[derive(Serialize)]
+    pub struct ErrorResponse {
+        message: String,
+    }
+
+    impl ErrorResponse {
+        pub fn new(message: String) -> Self {
+            Self { message }
+        }
+    }
 }
 
 #[tokio::main]
