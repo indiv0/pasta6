@@ -22,7 +22,7 @@ async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
 }
 
 async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
-    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS pastes
+    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
 (
     id SERIAL PRIMARY KEY NOT NULL,
     name VARCHAR(8),
