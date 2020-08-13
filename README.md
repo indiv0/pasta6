@@ -5,7 +5,7 @@ It's a pastebin-alike.
 
 Quickstart:
 ```sh
-docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=password postgres:12.3
+docker run --rm -p 5433:5432 -e POSTGRES_USER=pastaaaaaaa -e POSTGRES_PASSWORD=pastaaaaaaa -e POSTGRES_DB=pastaaaaaaa postgres:12.3
 cargo run
 ```
 
