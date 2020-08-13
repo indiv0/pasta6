@@ -1,8 +1,10 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
+use serde_derive::Serialize;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio_postgres::Client as DbClient;
 use warp::Filter;
+use warp::http::StatusCode;
 
 async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
     // Connect to the database.
@@ -38,6 +40,44 @@ fn with_db(client: Arc<DbClient>) -> impl Filter<Extract = (Arc<DbClient>,), Err
     warp::any().map(move || client.clone())
 }
 
+#[derive(Serialize)]
+struct ErrorResponse {
+    message: String,
+}
+
+async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
+    let code;
+    let message;
+
+    if err.is_not_found() {
+        code = StatusCode::NOT_FOUND;
+        message = "Not found";
+    } else if let Some(_) = err.find::<warp::filters::body::BodyDeserializeError>() {
+        code = StatusCode::BAD_REQUEST;
+        message = "Invalid body";
+    } else if let Some(e) = err.find::<Error>() {
+        match e {
+            Error::DbQueryError(_) => {
+                code = StatusCode::BAD_REQUEST;
+                message = "Could not execute request";
+            },
+        }
+    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+        code = StatusCode::METHOD_NOT_ALLOWED;
+        message = "Method not allowed";
+    } else {
+        eprintln!("unhandled error: {:?}", err);
+        code = StatusCode::INTERNAL_SERVER_ERROR;
+        message = "Internal server error";
+    }
+
+    let json = warp::reply::json(&ErrorResponse {
+        message: message.into(),
+    });
+
+    Ok(warp::reply::with_status(json, code))
+}
+
 #[derive(Debug)]
 enum Error {
     DbQueryError(tokio_postgres::Error),
@@ -52,7 +92,7 @@ async fn health_handler(client: Arc<DbClient>) -> Result<impl warp::Reply, warp:
         .await
         .map_err(|e| warp::reject::custom(Error::DbQueryError(e)))?;
 
-    Ok(warp::http::StatusCode::OK)
+    Ok(StatusCode::OK)
 }
 
 #[tokio::main]
@@ -75,7 +115,8 @@ async fn main() -> Result<(), tokio_postgres::Error> {
         });
 
     let routes = health
-        .or(paste);
+        .or(paste)
+        .recover(handle_rejection);
 
     warp::serve(routes)
         .run(([127, 0, 0, 1], 3030))

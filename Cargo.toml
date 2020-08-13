@@ -5,6 +5,8 @@ authors = ["Nikita Pekin <contact@nikitapek.in>"]
 edition = "2018"
 
 [dependencies]
+serde = { version = "1.0.115", features = ["derive"] }
+serde_derive = "1.0.115"
 tokio = { version = "0.2.22", features = ["macros"] }
 tokio-postgres = "0.5.5"
 warp = "0.2.4"
