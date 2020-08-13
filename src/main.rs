@@ -1,6 +1,10 @@
+// TODO: if the database restarts, we should either reconnect or restart as well.
+use std::convert::Infallible;
+use std::sync::Arc;
+use tokio_postgres::Client as DbClient;
 use warp::Filter;
 
-async fn create_db_connection() -> Result<tokio_postgres::Client, tokio_postgres::Error>{
+async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
     // Connect to the database.
     let (client, conn) = tokio_postgres::connect("host=localhost user=pastaaaaaa password=pastaaaaaa", tokio_postgres::NoTls).await?;
 
@@ -15,7 +19,7 @@ async fn create_db_connection() -> Result<tokio_postgres::Client, tokio_postgres
     Ok(client)
 }
 
-async fn init_db(client: &tokio_postgres::Client) -> Result<(), tokio_postgres::Error> {
+async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
     const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS pastes
 (
     id SERIAL PRIMARY KEY NOT NULL,
@@ -30,14 +34,36 @@ async fn init_db(client: &tokio_postgres::Client) -> Result<(), tokio_postgres::
     Ok(())
 }
 
+fn with_db(client: Arc<DbClient>) -> impl Filter<Extract = (Arc<DbClient>,), Error = Infallible> + Clone {
+    warp::any().map(move || client.clone())
+}
+
+#[derive(Debug)]
+enum Error {
+    DbQueryError(tokio_postgres::Error),
+}
+
+impl warp::reject::Reject for Error {}
+
+async fn health_handler(client: Arc<DbClient>) -> Result<impl warp::Reply, warp::Rejection> {
+    // Check if our connection to the DB is still OK.
+    client
+        .query("SELECT 1", &[])
+        .await
+        .map_err(|e| warp::reject::custom(Error::DbQueryError(e)))?;
+
+    Ok(warp::http::StatusCode::OK)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
-    let client = create_db_connection().await.expect("create connection error");
+    let client = Arc::new(create_db_connection().await.expect("create connection error"));
 
     init_db(&client).await.expect("initialize database error");
 
     let health = warp::path!("health")
-        .map(|| warp::http::StatusCode::OK);
+        .and(with_db(client))
+        .and_then(health_handler);
 
     let paste = warp::post()
         .and(warp::path("paste"))
