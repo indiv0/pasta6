@@ -3,7 +3,12 @@ use std::sync::Arc;
 use warp::Filter;
 
 mod db {
+    use crate::error::Error;
+    use crate::models::{Paste, PasteRequest};
+    use std::sync::Arc;
     use tokio_postgres::Client as DbClient;
+
+    const TABLE: &str = "paste";
 
     pub async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
         // Connect to the database.
@@ -34,11 +39,28 @@ mod db {
 
         Ok(())
     }
+
+    fn row_to_paste(row: &tokio_postgres::row::Row) -> Paste {
+        let id = row.get(0);
+        let created_at = row.get(1);
+        let data = row.get(2);
+        Paste::new(id, created_at, data)
+    }
+
+    pub async fn create_paste(client: Arc<DbClient>, body: PasteRequest) -> Result<Paste, Error> {
+        let query = format!("INSERT INTO {} (data) VALUES ($1) RETURNING *", TABLE);
+        let row = client
+            .query_one(query.as_str(), &[&&body[..]])
+            .await
+            .map_err(Error::DbQueryError)?;
+        Ok(row_to_paste(&row))
+    }
 }
 
 mod filter {
+    use crate::db;
     use crate::error::Error;
-    use crate::models::ErrorResponse;
+    use crate::models::{ErrorResponse, PasteCreateResponse, PasteRequest};
     use std::convert::Infallible;
     use std::sync::Arc;
     use tokio_postgres::Client as DbClient;
@@ -53,6 +75,14 @@ mod filter {
             .map_err(|e| warp::reject::custom(Error::DbQueryError(e)))?;
 
         Ok(StatusCode::OK)
+    }
+
+    pub async fn create_paste_handler(body: PasteRequest, client: Arc<DbClient>) -> Result<impl warp::Reply, warp::Rejection> {
+        Ok(warp::reply::json(&PasteCreateResponse::of(
+            db::create_paste(client, body)
+                .await
+                .map_err(|e| warp::reject::custom(e))?
+        )))
     }
 
     pub fn with_db(client: Arc<DbClient>) -> impl Filter<Extract = (Arc<DbClient>,), Error = Infallible> + Clone {
@@ -101,7 +131,35 @@ mod error {
 }
 
 mod models {
+    use chrono::{DateTime, Utc};
     use serde_derive::Serialize;
+
+    pub type PasteRequest = bytes::Bytes;
+
+    pub struct Paste {
+        id: i32,
+        _created_at: DateTime<Utc>,
+        _data: Vec<u8>,
+    }
+
+    impl Paste {
+        pub fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
+            Self { id, _created_at: created_at, _data: data }
+        }
+    }
+
+    #[derive(Serialize)]
+    pub struct PasteCreateResponse {
+        id: i32,
+    }
+
+    impl PasteCreateResponse {
+        pub fn of(paste: Paste) -> Self {
+            Self {
+                id: paste.id,
+            }
+        }
+    }
 
     #[derive(Serialize)]
     pub struct ErrorResponse {
@@ -122,17 +180,17 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     db::init_db(&client).await.expect("initialize database error");
 
     let health = warp::path!("health")
-        .and(filter::with_db(client))
+        .and(filter::with_db(client.clone()))
         .and_then(filter::health_handler);
 
-    let paste = warp::post()
-        .and(warp::path("paste"))
-        // Only accept bodies smaller than 16kb
-        .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::bytes())
-        .map(|bytes| {
-            format!("bytes = {:?}", bytes)
-        });
+    let paste = warp::path("paste");
+    let paste = paste
+            .and(warp::post())
+            // Only accept bodies smaller than 16kb
+            .and(warp::body::content_length_limit(1024 * 16))
+            .and(warp::body::bytes())
+            .and(filter::with_db(client))
+            .and_then(filter::create_paste_handler);
 
     let routes = health
         .or(paste)
