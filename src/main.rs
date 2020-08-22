@@ -19,6 +19,9 @@ mod db {
         // so spawn it off to run on its own.
         tokio::spawn(async move {
             if let Err(e) = conn.await {
+                // TODO: restart on connection error?
+                // Observed errors so far:
+                //   db_error: FATAL: terminating connection due to administrator command
                 eprintln!("connection error: {}", e);
             }
         });
@@ -41,6 +44,7 @@ mod db {
         Ok(())
     }
 
+    // TODO: does this belong here or in models?
     fn row_to_paste(row: &tokio_postgres::row::Row) -> Paste {
         let id = row.get(0);
         let created_at = row.get(1);
@@ -49,6 +53,7 @@ mod db {
     }
 
     pub async fn create_paste(client: Arc<DbClient>, body: PasteRequest) -> Result<Paste, Error> {
+        // TODO: use a prepared statement.
         let query = format!("INSERT INTO {} (data) VALUES ($1) RETURNING *", TABLE);
         let row = client
             .query_one(query.as_str(), &[&&body[..]])
@@ -123,6 +128,13 @@ mod filter {
                     code = StatusCode::BAD_REQUEST;
                     message = "Could not execute request";
                 },
+                /*
+                _ => {
+                    eprintln!("unhandled application error: {:?}", err);
+                    code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
+                    message = "Internal server error";
+                }
+                */
             }
         } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
             code = StatusCode::METHOD_NOT_ALLOWED;
@@ -172,6 +184,7 @@ mod models {
     }
 
     impl PasteCreateResponse {
+        // TODO: should this be implemented with `Into` or `From`?
         pub fn of(paste: Paste) -> Self {
             Self {
                 id: paste.id,
