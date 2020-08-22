@@ -1,32 +1,31 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
-use std::sync::Arc;
 use warp::Filter;
 
 mod db {
     use crate::error::Error;
     use crate::models::{Paste, PasteRequest};
-    use std::sync::Arc;
-    use tokio_postgres::Client as DbClient;
+    use deadpool_postgres::Client as DbClient;
+    use deadpool_postgres::Pool as DbPool;
+    use std::env;
 
     const TABLE: &str = "paste";
     const SELECT_FIELDS: &str = "id, created_at, data";
 
-    pub async fn create_db_connection() -> Result<DbClient, tokio_postgres::Error>{
-        // Connect to the database.
-        let (client, conn) = tokio_postgres::connect("host=localhost user=pastaaaaaa password=pastaaaaaa", tokio_postgres::NoTls).await?;
-
-        // The connection object performs the communication with the database,
-        // so spawn it off to run on its own.
-        tokio::spawn(async move {
-            if let Err(e) = conn.await {
-                // TODO: restart on connection error?
-                // Observed errors so far:
-                //   db_error: FATAL: terminating connection due to administrator command
-                eprintln!("connection error: {}", e);
-            }
+    pub fn create_db_pool() -> Result<DbPool, deadpool_postgres::config::ConfigError> {
+        use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod};
+        let mut cfg = Config::new();
+        cfg.host = Some(env::var("PG_HOST").expect("PG_HOST unset"));
+        cfg.user = Some(env::var("PG_USER").expect("PG_USER unset"));
+        cfg.password = Some(env::var("PG_PASSWORD").expect("PG_PASSWORD unset"));
+        cfg.dbname = Some("pastaaaaaa".to_string());
+        cfg.manager = Some(ManagerConfig {
+            recycling_method: RecyclingMethod::Fast,
         });
+        cfg.create_pool(tokio_postgres::NoTls)
+    }
 
-        Ok(client)
+    pub async fn get_db_connection(pool: &DbPool) -> Result<DbClient, Error> {
+        pool.get().await.map_err(Error::DbPoolError)
     }
 
     pub async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
@@ -37,9 +36,7 @@ mod db {
         data bytea
     )"#;
 
-        let _rows = client
-            .query(INIT_SQL, &[])
-            .await?;
+        let _rows = client.query(INIT_SQL, &[]).await?;
 
         Ok(())
     }
@@ -52,19 +49,21 @@ mod db {
         Paste::new(id, created_at, data)
     }
 
-    pub async fn create_paste(client: Arc<DbClient>, body: PasteRequest) -> Result<Paste, Error> {
+    pub async fn create_paste(pool: &DbPool, body: PasteRequest) -> Result<Paste, Error> {
+        let conn = get_db_connection(pool).await?;
         // TODO: use a prepared statement.
         let query = format!("INSERT INTO {} (data) VALUES ($1) RETURNING *", TABLE);
-        let row = client
+        let row = conn
             .query_one(query.as_str(), &[&&body[..]])
             .await
             .map_err(Error::DbQueryError)?;
         Ok(row_to_paste(&row))
     }
 
-    pub async fn get_paste(client: Arc<DbClient>, id: i32) -> Result<Paste, Error> {
+    pub async fn get_paste(pool: &DbPool, id: i32) -> Result<Paste, Error> {
+        let conn = get_db_connection(pool).await?;
         let query = format!("SELECT {} FROM {} WHERE id=$1", SELECT_FIELDS, TABLE);
-        let row = client
+        let row = conn
             .query_one(query.as_str(), &[&id])
             .await
             .map_err(Error::DbQueryError)?;
@@ -76,40 +75,47 @@ mod filter {
     use crate::db;
     use crate::error::Error;
     use crate::models::{self, ErrorResponse, PasteCreateResponse, PasteRequest};
+    use deadpool_postgres::Pool as DbPool;
     use std::convert::Infallible;
-    use std::sync::Arc;
-    use tokio_postgres::Client as DbClient;
-    use warp::Filter;
     use warp::http::StatusCode;
+    use warp::Filter;
 
-    pub async fn health_handler(client: Arc<DbClient>) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn health_handler(pool: DbPool) -> Result<impl warp::Reply, warp::Rejection> {
+        let conn = db::get_db_connection(&pool)
+            .await
+            .map_err(|e| warp::reject::custom(e))?;
         // Check if our connection to the DB is still OK.
-        client
-            .query("SELECT 1", &[])
+        conn.query("SELECT 1", &[])
             .await
             .map_err(|e| warp::reject::custom(Error::DbQueryError(e)))?;
 
         Ok(StatusCode::OK)
     }
 
-    pub async fn create_paste_handler(body: PasteRequest, client: Arc<DbClient>) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn create_paste_handler(
+        body: PasteRequest,
+        pool: DbPool,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         Ok(warp::reply::json(&PasteCreateResponse::of(
-            db::create_paste(client, body)
+            db::create_paste(&pool, body)
                 .await
-                .map_err(|e| warp::reject::custom(e))?
+                .map_err(|e| warp::reject::custom(e))?,
         )))
     }
 
-    pub async fn get_paste_handler(id: i32, client: Arc<DbClient>) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn get_paste_handler(
+        id: i32,
+        pool: DbPool,
+    ) -> Result<impl warp::Reply, warp::Rejection> {
         Ok(models::paste_to_paste_get_response(
-            db::get_paste(client, id)
+            db::get_paste(&pool, id)
                 .await
-                .map_err(|e| warp::reject::custom(e))?
+                .map_err(|e| warp::reject::custom(e))?,
         ))
     }
 
-    pub fn with_db(client: Arc<DbClient>) -> impl Filter<Extract = (Arc<DbClient>,), Error = Infallible> + Clone {
-        warp::any().map(move || client.clone())
+    pub fn with_db(pool: DbPool) -> impl Filter<Extract = (DbPool,), Error = Infallible> + Clone {
+        warp::any().map(move || pool.clone())
     }
 
     pub async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
@@ -127,14 +133,12 @@ mod filter {
                 Error::DbQueryError(_) => {
                     code = StatusCode::BAD_REQUEST;
                     message = "Could not execute request";
-                },
-                /*
+                }
                 _ => {
                     eprintln!("unhandled application error: {:?}", err);
                     code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
                     message = "Internal server error";
                 }
-                */
             }
         } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
             code = StatusCode::METHOD_NOT_ALLOWED;
@@ -152,12 +156,34 @@ mod filter {
 }
 
 mod error {
+    use std::fmt;
+
     #[derive(Debug)]
     pub enum Error {
+        DbPoolError(deadpool_postgres::PoolError),
         DbQueryError(tokio_postgres::Error),
     }
 
     impl warp::reject::Reject for Error {}
+
+    impl From<deadpool_postgres::PoolError> for Error {
+        fn from(err: deadpool_postgres::PoolError) -> Self {
+            Self::DbPoolError(err)
+        }
+    }
+
+    impl fmt::Display for Error {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                &Error::DbPoolError(ref e) => {
+                    write!(f, "error getting connection from DB pool: {0}", e)
+                }
+                &Error::DbQueryError(ref e) => write!(f, "error executing DB query: {0}", e),
+            }
+        }
+    }
+
+    impl std::error::Error for Error {}
 }
 
 mod models {
@@ -174,7 +200,11 @@ mod models {
 
     impl Paste {
         pub fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
-            Self { id, _created_at: created_at, data }
+            Self {
+                id,
+                _created_at: created_at,
+                data,
+            }
         }
     }
 
@@ -186,9 +216,7 @@ mod models {
     impl PasteCreateResponse {
         // TODO: should this be implemented with `Into` or `From`?
         pub fn of(paste: Paste) -> Self {
-            Self {
-                id: paste.id,
-            }
+            Self { id: paste.id }
         }
     }
 
@@ -212,35 +240,34 @@ mod models {
 
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
-    let client = Arc::new(db::create_db_connection().await.expect("create connection error"));
+    let pool = db::create_db_pool().expect("create db pool error");
 
-    db::init_db(&client).await.expect("initialize database error");
+    let conn = db::get_db_connection(&pool)
+        .await
+        .expect("get db connection error");
+    db::init_db(&conn).await.expect("initialize database error");
 
     let health = warp::path!("health")
-        .and(filter::with_db(client.clone()))
+        .and(filter::with_db(pool.clone()))
         .and_then(filter::health_handler);
 
     let paste = warp::path("paste");
     let paste = paste
-            .and(warp::get())
-            .and(warp::path::param())
-            .and(filter::with_db(client.clone()))
-            .and_then(filter::get_paste_handler)
+        .and(warp::get())
+        .and(warp::path::param())
+        .and(filter::with_db(pool.clone()))
+        .and_then(filter::get_paste_handler)
         .or(paste
             .and(warp::post())
             // Only accept bodies smaller than 16kb
             .and(warp::body::content_length_limit(1024 * 16))
             .and(warp::body::bytes())
-            .and(filter::with_db(client))
+            .and(filter::with_db(pool))
             .and_then(filter::create_paste_handler));
 
-    let routes = health
-        .or(paste)
-        .recover(filter::handle_rejection);
+    let routes = health.or(paste).recover(filter::handle_rejection);
 
-    warp::serve(routes)
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
     Ok(())
 }

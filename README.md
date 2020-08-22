@@ -6,7 +6,10 @@ It's a pastebin-alike.
 ## Quickstart
 
 ```sh
-docker run --name postgres --rm -p 5433:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
+docker run --name postgres --rm -p 5432:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
+export PG_HOST=localhost
+export PG_USER=pastaaaaaa
+export PG_PASSWORD=pastaaaaaa
 cargo run
 ```
 
@@ -90,5 +93,8 @@ Run pasta6:
 sudo -u pastaaaaaa cp pastaaaaaa /home/pastaaaaaa/
 
 # Run pasta6
+export PG_HOST=localhost
+export PG_USER=pastaaaaaa
+export PG_PASSWORD=pastaaaaaa
 sudo -u pastaaaaaa /home/pastaaaaaa/pastaaaaaa
 ```
