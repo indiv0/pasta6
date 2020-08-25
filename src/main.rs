@@ -1,4 +1,5 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
+use std::env;
 use warp::Filter;
 
 mod db {
@@ -267,7 +268,8 @@ async fn main() -> Result<(), tokio_postgres::Error> {
 
     let routes = health.or(paste).recover(filter::handle_rejection);
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let host: std::net::Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
+    warp::serve(routes).run((host, 3030)).await;
 
     Ok(())
 }

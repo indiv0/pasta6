@@ -5,8 +5,17 @@ It's a pastebin-alike.
 
 ## Quickstart
 
+First, modify `default.conf` to point to your upstream address.
+Replace `172.16.1.92` with your local dev machine's IP.
+
+```
+upstream pastaaaaaa {
+    server 172.16.1.92:3030;
+}
+```
+
 ```sh
-docker run --name postgres --rm -p 5432:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
+docker run -d --name nginx --network host -v $(pwd)/static:/usr/share/nginx/html:ro -v $(pwd)/default.conf:/etc/nginx/conf.d/default.conf:ro docker run -d --name postgres --rm -p 5432:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
 export PG_HOST=localhost
 export PG_USER=pastaaaaaa
 export PG_PASSWORD=pastaaaaaa
