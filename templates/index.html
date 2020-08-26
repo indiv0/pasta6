@@ -1,22 +1,6 @@
-<!DOCTYPE html>
-<html
-  lang="en">
-  <head>
-    <title>pasta6</title>
-    <link
-      rel="stylesheet"
-      href="/styles.css">
-  </head>
-  <body>
-    <nav
-      class="flex items-center justify-between flex-wrap bg-teal-500 p-6">
-      <div
-        class="flex items-center flex-shrink-0 text-white mr-6">
-        <a
-          href="/"
-          class="font-semibold text-xl tracking-tight hover:text-teal-200">pasta6 &hearts;</a>
-      </div>
-    </nav>
+{% extends "base.html" %}
+
+{% block content %}
     <div
       class="flex flex-col h-screen justify-center items-center bg-gray-100">
       <form
@@ -34,6 +18,4 @@
         </button>
       </form>
     </div>
-  </body>
-</html>
-
+{% endblock %}

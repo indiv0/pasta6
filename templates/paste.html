@@ -1,22 +1,8 @@
-<!DOCTYPE html>
-<html
-  lang="en">
-  <head>
-    <title>{{ _paste.id() }} -- pasta6</title>
-    <link
-      rel="stylesheet"
-      href="/styles.css">
-  </head>
-  <body>
-    <nav
-      class="flex items-center justify-between flex-wrap bg-teal-500 p-6">
-      <div
-        class="flex items-center flex-shrink-0 text-white mr-6">
-        <a
-          href="/"
-          class="font-semibold text-xl tracking-tight hover:text-teal-200">pasta6 &hearts;</a>
-      </div>
-    </nav>
+{% extends "base.html" %}
+
+{% block title %}{{ _paste.id() }} -- pasta6{% endblock %}
+
+{% block content %}
     <div
       class="flex items-center justify-between flex-wrap bg-teal-200 px-6 py-2">
       <span
@@ -24,6 +10,4 @@
     </div>
     <pre
       class="flex items-center justify-between flex-wrap px-6 py-6"><code>{{ _paste.data() }}</code></pre>
-  </body>
-</html>
-
+{% endblock %}
