@@ -198,7 +198,7 @@ mod routes {
 
     /// GET /api/paste
     fn get_paste_api(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path("paste")
+        warp::path!("api" / "paste")
             .and(warp::get())
             .and(bytes_body())
             .and(with_db(pool))
