@@ -1,4 +1,5 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
+mod auth;
 mod paste;
 
 mod db {
