@@ -1,1 +1,6 @@
+# cargo
 /target
+
+# yarn/tailwindcss
+/node_modules
+/static/styles.css

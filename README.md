@@ -15,6 +15,8 @@ upstream pastaaaaaa {
 ```
 
 ```sh
+yarn install
+yarn run tailwindcss build styles.css -o static/styles.css
 docker run -d --name nginx --network host -v $(pwd)/static:/usr/share/nginx/html:ro -v $(pwd)/default.conf:/etc/nginx/conf.d/default.conf:ro docker run -d --name postgres --rm -p 5432:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
 export PG_HOST=localhost
 export PG_USER=pastaaaaaa
@@ -40,6 +42,8 @@ First, modify the EC2 instance's security group to allow tcp/80 traffic.
 
 Compile & copy the `pastaaaaaa` binary to the instance:
 ```sh
+yarn install
+NODE_ENV=production yarn run tailwindcss build styles.css -o static/styles.css
 cargo build --release
 scp -i pastaaaaaa.pem target/release/pastaaaaaa ubuntu@ec2-xxx-xxx-xxx-xxx.ca-central-1.compute.amazonaws.com:
 ```
@@ -63,14 +67,33 @@ sudo apt-get install postgresql
 Configure Nginx.
 First, create the `/etc/nginx/sites-available/p.dank.xyz` file:
 ```sh
-server {
-    listen 80;
-    listen [::]:80;
+upstream pastaaaaaa {
+    server localhost:3030;
+}
 
-    server_name p.dank.xyz;
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  p.dank.xyz;
 
     location / {
-        proxy_pass http://localhost:3030;
+        proxy_pass         http://pastaaaaaa/;
+        proxy_redirect     off;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Host $server_name;
+    }
+
+    location /styles.css {
+        root   /srv/www/p.dank.xyz;
+    }
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
     }
 }
 ```
@@ -98,10 +121,17 @@ sudo -u pastaaaaaa psql # \password, \q
 
 Run pasta6:
 ```sh
+# Copy the static files to the directory served by nginx
+sudo mkdir -p /srv/www/p.dank.xyz
+sudo cp -r static/* /srv/www/p.dank.xyz/
+sudo chown -R root:root /srv/www/p.dank.xyz
+
 # Copy the pasta6 executable to the directory it will run in
 sudo -u pastaaaaaa cp pastaaaaaa /home/pastaaaaaa/
 
 # Run pasta6
+sudo su pastaaaaaa
+export PASTA6_HOST=127.0.0.1
 export PG_HOST=localhost
 export PG_USER=pastaaaaaa
 export PG_PASSWORD=pastaaaaaa
