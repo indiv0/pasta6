@@ -175,8 +175,20 @@ mod models {
     }
 }
 
+/// # Autoreload
+/// Install `systemfd` and `cargo-watch`:
+/// ```
+/// cargo install systemfd cargo-watch
+/// ```
+/// And run with:
+/// ```
+/// systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch -x run
+/// ```
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
+    use hyper::server::Server;
+    use listenfd::ListenFd;
+    use std::convert::Infallible;
     use std::env;
     use warp::Filter;
 
@@ -187,10 +199,33 @@ async fn main() -> Result<(), tokio_postgres::Error> {
         .expect("get db connection error");
     paste::init_db(&conn).await.expect("initialize database error");
 
-    let routes = routes::routes(pool.clone()).or(paste::routes(pool.clone())).recover(filter::handle_rejection);
+    let routes = routes::routes(pool.clone())
+        .or(auth::routes())
+        .or(paste::routes(pool.clone()))
+        .recover(filter::handle_rejection);
 
-    let host: std::net::Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
-    warp::serve(routes).run((host, 3030)).await;
+    // hyper lets us build a server from a TcpListener. Thus, we'll need to
+    // convert our `warp::Filter` into a `hyper::service::MakeService` for use
+    // with a `hyper::server::Server`.
+    let svc = warp::service(routes);
+
+    let make_svc = hyper::service::make_service_fn(|_: _| {
+        // the cline is there because not all warp filters impl Copy
+        let svc = svc.clone();
+        async move { Ok::<_, Infallible>(svc) }
+    });
+
+    let mut listenfd = ListenFd::from_env();
+    // if listenfd doesn't take a TcpListener (i.e. we're not running via the
+    // command above), we fall back to explicitly binding to a given host:port.
+    let server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
+        Server::from_tcp(l).unwrap()
+    } else {
+        let host: std::net::Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
+        Server::bind(&(host, 3030).into())
+    };
+
+    server.serve(make_svc).await.unwrap();
 
     Ok(())
 }
