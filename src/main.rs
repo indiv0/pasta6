@@ -193,6 +193,8 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     use std::env;
     use warp::Filter;
 
+    better_panic::install();
+
     let pool = db::create_db_pool().expect("create db pool error");
 
     let conn = db::get_db_connection(&pool)
