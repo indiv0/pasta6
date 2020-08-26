@@ -1,9 +1,76 @@
 pub use db::init_db;
 pub use routes::routes;
 
+mod models {
+    use chrono::{DateTime, Utc};
+    use serde_derive::{Deserialize, Serialize};
+
+    #[derive(Deserialize)]
+    #[serde(transparent)]
+    pub struct Form<T>(T);
+
+    #[derive(Deserialize)]
+    pub struct PasteForm {
+        data: String,
+    }
+
+    impl PasteForm {
+        pub fn data(&self) -> &[u8] {
+            self.data.as_bytes()
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Paste {
+        id: i32,
+        created_at: DateTime<Utc>,
+        data: Vec<u8>,
+    }
+
+    impl Paste {
+        pub fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
+            Self {
+                id,
+                created_at: created_at,
+                data,
+            }
+        }
+
+        pub fn id(&self) -> &i32 {
+            &self.id
+        }
+
+        pub fn created_at(&self) -> &DateTime<Utc> {
+            &self.created_at
+        }
+
+        pub fn data(&self) -> &str {
+            &std::str::from_utf8(&self.data).unwrap()
+        }
+    }
+
+    #[derive(Serialize)]
+    pub struct PasteCreateResponse {
+        id: i32,
+    }
+
+    impl PasteCreateResponse {
+        // TODO: should this be implemented with `Into` or `From`?
+        pub fn of(paste: Paste) -> Self {
+            Self { id: paste.id }
+        }
+    }
+
+    type PasteGetResponse = Vec<u8>;
+
+    pub fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
+        paste.data
+    }
+}
+
 mod db {
     use crate::error::Error;
-    use crate::models::Paste;
+    use crate::paste::models::Paste;
     use deadpool_postgres::Client as DbClient;
 
     const TABLE: &str = "paste";
@@ -53,7 +120,7 @@ mod db {
 mod filter {
     use askama_warp::Template;
     use crate::paste::db;
-    use crate::models::{self, Paste, PasteCreateResponse, PasteForm};
+    use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
     use deadpool_postgres::Client as DbClient;
     use std::str::FromStr;
     use warp::http::Uri;

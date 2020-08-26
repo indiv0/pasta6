@@ -40,14 +40,11 @@ mod filter {
     #[template(path = "index.html")]
     struct IndexTemplate;
 
-    type Reply<T> = Result<T, warp::Rejection>;
-    type InfallibleReply<T> = Result<T, Infallible>;
-
-    pub async fn index() -> InfallibleReply<impl warp::Reply> {
+    pub async fn index() -> Result<impl warp::Reply, Infallible> {
         Ok(IndexTemplate)
     }
 
-    pub async fn health(db: DbClient) -> Reply<impl warp::Reply> {
+    pub async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
         // Check if our connection to the DB is still OK.
         db.query("SELECT 1", &[])
             .await
@@ -67,7 +64,7 @@ mod filter {
         })
     }
 
-    pub async fn handle_rejection(err: warp::Rejection) -> InfallibleReply<impl warp::Reply> {
+    pub async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
         let code;
         let message;
 
@@ -164,64 +161,7 @@ mod error {
 }
 
 mod models {
-    use chrono::{DateTime, Utc};
-    use serde_derive::{Deserialize, Serialize};
-
-    #[derive(Deserialize)]
-    #[serde(transparent)]
-    pub struct Form<T>(T);
-
-    #[derive(Deserialize)]
-    pub struct PasteForm {
-        data: String,
-    }
-
-    impl PasteForm {
-        pub fn data(&self) -> &[u8] {
-            self.data.as_bytes()
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct Paste {
-        id: i32,
-        created_at: DateTime<Utc>,
-        data: Vec<u8>,
-    }
-
-    impl Paste {
-        pub fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
-            Self {
-                id,
-                created_at: created_at,
-                data,
-            }
-        }
-
-        pub fn id(&self) -> &i32 {
-            &self.id
-        }
-
-        pub fn created_at(&self) -> &DateTime<Utc> {
-            &self.created_at
-        }
-
-        pub fn data(&self) -> &str {
-            &std::str::from_utf8(&self.data).unwrap()
-        }
-    }
-
-    #[derive(Serialize)]
-    pub struct PasteCreateResponse {
-        id: i32,
-    }
-
-    impl PasteCreateResponse {
-        // TODO: should this be implemented with `Into` or `From`?
-        pub fn of(paste: Paste) -> Self {
-            Self { id: paste.id }
-        }
-    }
+    use serde_derive::Serialize;
 
     #[derive(Serialize)]
     pub struct ErrorResponse {
@@ -232,12 +172,6 @@ mod models {
         pub fn new(message: String) -> Self {
             Self { message }
         }
-    }
-
-    type PasteGetResponse = Vec<u8>;
-
-    pub fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
-        paste.data
     }
 }
 
