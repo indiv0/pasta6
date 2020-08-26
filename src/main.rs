@@ -2,6 +2,8 @@
 use std::env;
 use warp::Filter;
 
+mod paste;
+
 mod db {
     use crate::error::Error;
     use crate::models::Paste;
@@ -204,22 +206,9 @@ mod filter {
 }
 
 mod routes {
-    use crate::filter::{self, with_db, index, health};
+    use crate::filter::{with_db, index, health};
     use deadpool_postgres::Pool as DbPool;
-    use serde::de::DeserializeOwned;
     use warp::Filter;
-
-    fn bytes_body() -> impl Filter<Extract = (bytes::Bytes,), Error = warp::Rejection> + Clone {
-        warp::body::content_length_limit(1024 * 16)
-            .and(warp::body::bytes())
-    }
-
-    fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
-        where T: Send + DeserializeOwned
-    {
-        warp::body::content_length_limit(1024 * 16)
-            .and(warp::body::form())
-    }
 
     /// GET /
     fn get_index() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -236,47 +225,9 @@ mod routes {
             .and_then(health)
     }
 
-    /// GET /api/paste
-    fn get_paste_api(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path("paste")
-            .and(warp::get())
-            .and(bytes_body())
-            .and(with_db(pool))
-            .and_then(filter::create_paste_api)
-    }
-
-    /// GET /api/paste/{id}
-    fn create_paste_api(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("api" / "paste" / i32)
-            .and(warp::post())
-            .and(with_db(pool))
-            .and_then(filter::get_paste_api)
-    }
-
-    /// POST /paste
-    fn create_paste(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path("paste")
-            .and(warp::post())
-            .and(form_body())
-            .and(with_db(pool))
-            .and_then(filter::create_paste)
-    }
-
-    /// GET /paste/{id}
-    fn get_paste(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("paste" / i32)
-            .and(warp::get())
-            .and(with_db(pool))
-            .and_then(filter::get_paste)
-    }
-
-    pub fn paste_routes(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    pub fn routes(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_index()
-            .or(get_health(pool.clone()))
-            .or(get_paste(pool.clone()))
-            .or(create_paste(pool.clone()))
-            .or(get_paste_api(pool.clone()))
-            .or(create_paste_api(pool))
+            .or(get_health(pool))
     }
 }
 
@@ -398,7 +349,7 @@ async fn main() -> Result<(), tokio_postgres::Error> {
         .expect("get db connection error");
     db::init_db(&conn).await.expect("initialize database error");
 
-    let routes = routes::paste_routes(pool).recover(filter::handle_rejection);
+    let routes = routes::routes(pool.clone()).or(paste::routes(pool.clone())).recover(filter::handle_rejection);
 
     let host: std::net::Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
     warp::serve(routes).run((host, 3030)).await;
