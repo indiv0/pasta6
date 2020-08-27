@@ -11,10 +11,10 @@ mod db {
     pub fn create_db_pool() -> Result<DbPool, deadpool_postgres::config::ConfigError> {
         use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod};
         let mut cfg = Config::new();
-        cfg.host = Some(env::var("PG_HOST").expect("PG_HOST unset"));
-        cfg.user = Some(env::var("PG_USER").expect("PG_USER unset"));
-        cfg.password = Some(env::var("PG_PASSWORD").expect("PG_PASSWORD unset"));
-        cfg.dbname = Some("pastaaaaaa".to_string());
+        cfg.host = Some(env::var("POSTGRES_HOST").expect("POSTGRES_HOST unset"));
+        cfg.user = Some(env::var("POSTGRES_USER").expect("POSTGRES_USER unset"));
+        cfg.password = Some(env::var("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD unset"));
+        cfg.dbname = Some(env::var("POSTGRES_DB").expect("POSTGRES_DB unset"));
         cfg.manager = Some(ManagerConfig {
             recycling_method: RecyclingMethod::Fast,
         });

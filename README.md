@@ -5,23 +5,35 @@ It's a pastebin-alike.
 
 ## Quickstart
 
-First, modify `default.conf` to point to your upstream address.
-Replace `172.16.1.92` with your local dev machine's IP.
+Copy `.env.example` to `.env`, modify it according to your needs (or leave it to
+the **insecure** defaults), then load it:
+```sh
+cp .env.example .env
+vim .env
+source .env
+```
 
+Replace `172.16.1.92` in `default.conf` to point to your local dev machine's IP:
 ```
 upstream pastaaaaaa {
     server 172.16.1.92:3030;
 }
 ```
 
+Compile the styles with TailwindCSS:
 ```sh
 yarn install
-yarn run tailwindcss build styles.css -o static/styles.css
-docker run -d --name nginx --network host -v $(pwd)/static:/usr/share/nginx/html:ro -v $(pwd)/default.conf:/etc/nginx/conf.d/default.conf:ro docker run -d --name postgres --rm -p 5432:5432 -e POSTGRES_USER=pastaaaaaa -e POSTGRES_PASSWORD=pastaaaaaa -e POSTGRES_DB=pastaaaaaa postgres:12.3
-export PG_HOST=localhost
-export PG_USER=pastaaaaaa
-export PG_PASSWORD=pastaaaaaa
-cargo run
+make styles
+```
+
+Spin up the nginx and postgres docker containers:
+```sh
+make dependencies
+```
+
+Start the service:
+```sh
+make watch
 ```
 
 Dependencies:
