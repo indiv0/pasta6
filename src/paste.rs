@@ -1,5 +1,5 @@
-pub use db::init_db;
-pub use routes::routes;
+pub(crate) use db::init_db;
+pub(crate) use routes::routes;
 
 mod models {
     use chrono::{DateTime, Utc};
@@ -7,28 +7,28 @@ mod models {
 
     #[derive(Deserialize)]
     #[serde(transparent)]
-    pub struct Form<T>(T);
+    pub(crate) struct Form<T>(T);
 
     #[derive(Deserialize)]
-    pub struct PasteForm {
+    pub(crate) struct PasteForm {
         data: String,
     }
 
     impl PasteForm {
-        pub fn data(&self) -> &[u8] {
+        pub(crate) fn data(&self) -> &[u8] {
             self.data.as_bytes()
         }
     }
 
     #[derive(Debug)]
-    pub struct Paste {
+    pub(crate) struct Paste {
         id: i32,
         created_at: DateTime<Utc>,
         data: Vec<u8>,
     }
 
     impl Paste {
-        pub fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
+        pub(crate) fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
             Self {
                 id,
                 created_at: created_at,
@@ -36,34 +36,34 @@ mod models {
             }
         }
 
-        pub fn id(&self) -> &i32 {
+        pub(crate) fn id(&self) -> &i32 {
             &self.id
         }
 
-        pub fn created_at(&self) -> &DateTime<Utc> {
+        pub(crate) fn created_at(&self) -> &DateTime<Utc> {
             &self.created_at
         }
 
-        pub fn data(&self) -> &str {
+        pub(crate) fn data(&self) -> &str {
             &std::str::from_utf8(&self.data).unwrap()
         }
     }
 
     #[derive(Serialize)]
-    pub struct PasteCreateResponse {
+    pub(crate) struct PasteCreateResponse {
         id: i32,
     }
 
     impl PasteCreateResponse {
         // TODO: should this be implemented with `Into` or `From`?
-        pub fn of(paste: Paste) -> Self {
+        pub(crate) fn of(paste: Paste) -> Self {
             Self { id: paste.id }
         }
     }
 
     type PasteGetResponse = Vec<u8>;
 
-    pub fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
+    pub(crate) fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
         paste.data
     }
 }
@@ -76,7 +76,7 @@ mod db {
     const TABLE: &str = "paste";
     const SELECT_FIELDS: &str = "id, created_at, data";
 
-    pub async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
+    pub(crate) async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
         const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
     (
         id SERIAL PRIMARY KEY NOT NULL,
@@ -97,7 +97,7 @@ mod db {
         Paste::new(id, created_at, data)
     }
 
-    pub async fn create_paste(db: &DbClient, body: &[u8]) -> Result<Paste, Error> {
+    pub(crate) async fn create_paste(db: &DbClient, body: &[u8]) -> Result<Paste, Error> {
         // TODO: use a prepared statement.
         let query = format!("INSERT INTO {} (data) VALUES ($1) RETURNING *", TABLE);
         let row = db
@@ -107,7 +107,7 @@ mod db {
         Ok(row_to_paste(&row))
     }
 
-    pub async fn get_paste(db: &DbClient, id: i32) -> Result<Paste, Error> {
+    pub(crate) async fn get_paste(db: &DbClient, id: i32) -> Result<Paste, Error> {
         let query = format!("SELECT {} FROM {} WHERE id=$1", SELECT_FIELDS, TABLE);
         let row = db
             .query_one(query.as_str(), &[&id])
@@ -127,7 +127,7 @@ mod filter {
     use std::str::FromStr;
     use warp::http::Uri;
 
-    pub async fn create_paste_api(
+    pub(crate) async fn create_paste_api(
         body: bytes::Bytes,
         db: DbClient,
     ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -138,7 +138,7 @@ mod filter {
         )))
     }
 
-    pub async fn get_paste_api(id: i32, db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
+    pub(crate) async fn get_paste_api(id: i32, db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
         Ok(models::paste_to_paste_get_response(
             db::get_paste(&db, id)
                 .await
@@ -146,7 +146,7 @@ mod filter {
         ))
     }
 
-    pub async fn create_paste(
+    pub(crate) async fn create_paste(
         body: PasteForm,
         db: DbClient,
     ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -166,7 +166,7 @@ mod filter {
         _paste: Paste,
     }
 
-    pub async fn get_paste(
+    pub(crate) async fn get_paste(
         id: i32,
         db: DbClient,
         // TODO: we don't actually need the username for this endpoint until
@@ -240,7 +240,7 @@ mod routes {
             .and_then(filter::get_paste)
     }
 
-    pub fn routes(
+    pub(crate) fn routes(
         pool: DbPool,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_paste(pool.clone())

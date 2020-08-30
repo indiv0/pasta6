@@ -9,7 +9,7 @@ mod db {
     use deadpool_postgres::Pool as DbPool;
     use std::env;
 
-    pub fn create_db_pool() -> Result<DbPool, deadpool_postgres::config::ConfigError> {
+    pub(crate) fn create_db_pool() -> Result<DbPool, deadpool_postgres::config::ConfigError> {
         use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod};
         let mut cfg = Config::new();
         cfg.host = Some(env::var("POSTGRES_HOST").expect("POSTGRES_HOST unset"));
@@ -22,7 +22,7 @@ mod db {
         cfg.create_pool(tokio_postgres::NoTls)
     }
 
-    pub async fn get_db_connection(pool: &DbPool) -> Result<DbClient, Error> {
+    pub(crate) async fn get_db_connection(pool: &DbPool) -> Result<DbClient, Error> {
         pool.get().await.map_err(Error::DbPoolError)
     }
 }
@@ -39,16 +39,16 @@ mod filter {
     use warp::http::StatusCode;
     use warp::Filter;
 
-    pub struct TemplateContext {
+    pub(crate) struct TemplateContext {
         current_user: Option<User>,
     }
 
     impl TemplateContext {
-        pub fn new(current_user: Option<User>) -> Self {
+        pub(crate) fn new(current_user: Option<User>) -> Self {
             Self { current_user }
         }
 
-        pub fn current_user(&self) -> Option<&User> {
+        pub(crate) fn current_user(&self) -> Option<&User> {
             self.current_user.as_ref()
         }
     }
@@ -60,13 +60,13 @@ mod filter {
     }
 
     // TODO: only get a DB connection if the session is present.
-    pub async fn index(current_user: Option<User>) -> Result<impl warp::Reply, warp::Rejection> {
+    pub(crate) async fn index(current_user: Option<User>) -> Result<impl warp::Reply, warp::Rejection> {
         Ok(IndexTemplate {
             ctx: TemplateContext::new(current_user),
         })
     }
 
-    pub async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
+    pub(crate) async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
         // Check if our connection to the DB is still OK.
         db.query("SELECT 1", &[])
             .await
@@ -75,7 +75,7 @@ mod filter {
         Ok(StatusCode::OK)
     }
 
-    pub fn with_db(
+    pub(crate) fn with_db(
         pool: DbPool,
     ) -> impl Filter<Extract = (DbClient,), Error = warp::Rejection> + Clone {
         warp::any().and_then(move || {
@@ -88,7 +88,7 @@ mod filter {
         })
     }
 
-    pub async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
+    pub(crate) async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
         let code;
         let message;
 
@@ -135,7 +135,7 @@ mod routes {
     use serde::de::DeserializeOwned;
     use warp::Filter;
 
-    pub fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
+    pub(crate) fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
     where
         T: Send + DeserializeOwned,
     {
@@ -162,7 +162,7 @@ mod routes {
             .and_then(health)
     }
 
-    pub fn routes(
+    pub(crate) fn routes(
         pool: DbPool,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_index(pool.clone()).or(get_health(pool))
@@ -173,7 +173,7 @@ mod error {
     use std::fmt;
 
     #[derive(Debug)]
-    pub enum Error {
+    pub(crate) enum Error {
         SerdeJsonError(serde_json::error::Error),
         DbPoolError(deadpool_postgres::PoolError),
         DbQueryError(tokio_postgres::Error),
@@ -214,12 +214,12 @@ mod models {
     use serde_derive::Serialize;
 
     #[derive(Serialize)]
-    pub struct ErrorResponse {
+    pub(crate) struct ErrorResponse {
         message: String,
     }
 
     impl ErrorResponse {
-        pub fn new(message: String) -> Self {
+        pub(crate) fn new(message: String) -> Self {
             Self { message }
         }
     }
