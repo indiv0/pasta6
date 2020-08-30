@@ -118,11 +118,11 @@ mod db {
 }
 
 mod filter {
-    use askama_warp::Template;
     use crate::auth::User;
     use crate::filter::TemplateContext;
     use crate::paste::db;
     use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
+    use askama_warp::Template;
     use deadpool_postgres::Client as DbClient;
     use std::str::FromStr;
     use warp::http::Uri;
@@ -138,10 +138,7 @@ mod filter {
         )))
     }
 
-    pub async fn get_paste_api(
-        id: i32,
-        db: DbClient,
-    ) -> Result<impl warp::Reply, warp::Rejection> {
+    pub async fn get_paste_api(id: i32, db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
         Ok(models::paste_to_paste_get_response(
             db::get_paste(&db, id)
                 .await
@@ -157,7 +154,7 @@ mod filter {
             .await
             .map_err(|e| warp::reject::custom(e))?;
         assert_eq!(paste.data().as_bytes(), body.data());
-        let redirect_uri = Uri::from_str(&format!("/paste/{id}", id=paste.id())).unwrap();
+        let redirect_uri = Uri::from_str(&format!("/paste/{id}", id = paste.id())).unwrap();
         // TODO: 302 instead of 301 here
         Ok(warp::redirect::redirect(redirect_uri))
     }
@@ -181,25 +178,29 @@ mod filter {
         let paste = db::get_paste(&db, id)
             .await
             .map_err(|e| warp::reject::custom(e))?;
-        Ok(PasteTemplate { ctx: TemplateContext::new(current_user), _paste: paste })
+        Ok(PasteTemplate {
+            ctx: TemplateContext::new(current_user),
+            _paste: paste,
+        })
     }
 }
 
 mod routes {
     use crate::auth;
-    use crate::routes::form_body;
     use crate::filter::with_db;
     use crate::paste::filter;
+    use crate::routes::form_body;
     use deadpool_postgres::Pool as DbPool;
     use warp::Filter;
 
     fn bytes_body() -> impl Filter<Extract = (bytes::Bytes,), Error = warp::Rejection> + Clone {
-        warp::body::content_length_limit(1024 * 16)
-            .and(warp::body::bytes())
+        warp::body::content_length_limit(1024 * 16).and(warp::body::bytes())
     }
 
     /// GET /api/paste
-    fn get_paste_api(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn get_paste_api(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "paste")
             .and(warp::get())
             .and(bytes_body())
@@ -208,7 +209,9 @@ mod routes {
     }
 
     /// GET /api/paste/{id}
-    fn create_paste_api(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn create_paste_api(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("api" / "paste" / i32)
             .and(warp::post())
             .and(with_db(pool))
@@ -216,7 +219,9 @@ mod routes {
     }
 
     /// POST /paste
-    fn create_paste(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn create_paste(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path("paste")
             .and(warp::post())
             .and(form_body())
@@ -225,7 +230,9 @@ mod routes {
     }
 
     /// GET /paste/{id}
-    fn get_paste(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn get_paste(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("paste" / i32)
             .and(warp::get())
             .and(with_db(pool.clone()))
@@ -233,7 +240,9 @@ mod routes {
             .and_then(filter::get_paste)
     }
 
-    pub fn routes(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    pub fn routes(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_paste(pool.clone())
             .or(create_paste(pool.clone()))
             .or(get_paste_api(pool.clone()))

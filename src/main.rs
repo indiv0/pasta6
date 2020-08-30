@@ -28,11 +28,11 @@ mod db {
 }
 
 mod filter {
-    use askama_warp::Template;
-    use crate::auth::User;
-    use crate::error::Error;
     use super::db;
     use super::models::ErrorResponse;
+    use crate::auth::User;
+    use crate::error::Error;
+    use askama_warp::Template;
     use deadpool_postgres::Client as DbClient;
     use deadpool_postgres::Pool as DbPool;
     use std::convert::Infallible;
@@ -61,7 +61,9 @@ mod filter {
 
     // TODO: only get a DB connection if the session is present.
     pub async fn index(current_user: Option<User>) -> Result<impl warp::Reply, warp::Rejection> {
-        Ok(IndexTemplate { ctx: TemplateContext::new(current_user) })
+        Ok(IndexTemplate {
+            ctx: TemplateContext::new(current_user),
+        })
     }
 
     pub async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
@@ -73,7 +75,9 @@ mod filter {
         Ok(StatusCode::OK)
     }
 
-    pub fn with_db(pool: DbPool) -> impl Filter<Extract = (DbClient,), Error = warp::Rejection> + Clone {
+    pub fn with_db(
+        pool: DbPool,
+    ) -> impl Filter<Extract = (DbClient,), Error = warp::Rejection> + Clone {
         warp::any().and_then(move || {
             let pool = pool.clone();
             async move {
@@ -126,20 +130,22 @@ mod filter {
 
 mod routes {
     use crate::auth;
-    use crate::filter::{with_db, index, health};
+    use crate::filter::{health, index, with_db};
     use deadpool_postgres::Pool as DbPool;
     use serde::de::DeserializeOwned;
     use warp::Filter;
 
     pub fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
-        where T: Send + DeserializeOwned
+    where
+        T: Send + DeserializeOwned,
     {
-        warp::body::content_length_limit(1024 * 16)
-            .and(warp::body::form())
+        warp::body::content_length_limit(1024 * 16).and(warp::body::form())
     }
 
     /// GET /
-    fn get_index(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn get_index(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path::end()
             .and(warp::get())
             .and(auth::optional_user(pool))
@@ -147,16 +153,19 @@ mod routes {
     }
 
     /// GET /health
-    fn get_health(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn get_health(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path("health")
             .and(warp::get())
             .and(with_db(pool))
             .and_then(health)
     }
 
-    pub fn routes(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_index(pool.clone())
-            .or(get_health(pool))
+    pub fn routes(
+        pool: DbPool,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        get_index(pool.clone()).or(get_health(pool))
     }
 }
 
@@ -240,8 +249,12 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     let conn = db::get_db_connection(&pool)
         .await
         .expect("get db connection error");
-    auth::init_db(&conn).await.expect("initialize database error");
-    paste::init_db(&conn).await.expect("initialize database error");
+    auth::init_db(&conn)
+        .await
+        .expect("initialize database error");
+    paste::init_db(&conn)
+        .await
+        .expect("initialize database error");
 
     let routes = routes::routes(pool.clone())
         .or(auth::routes(pool.clone()))
@@ -265,7 +278,10 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     let server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
         Server::from_tcp(l).unwrap()
     } else {
-        let host: std::net::Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
+        let host: std::net::Ipv4Addr = env::var("PASTA6_HOST")
+            .expect("PASTA6_HOST unset")
+            .parse()
+            .unwrap();
         Server::bind(&(host, 3030).into())
     };
 
