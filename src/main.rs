@@ -1,6 +1,7 @@
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
 mod paste;
+mod session;
 
 mod db {
     use crate::error::Error;
@@ -28,21 +29,39 @@ mod db {
 
 mod filter {
     use askama_warp::Template;
-    use crate::db;
+    use crate::auth::User;
     use crate::error::Error;
-    use crate::models::ErrorResponse;
+    use super::db;
+    use super::models::ErrorResponse;
     use deadpool_postgres::Client as DbClient;
     use deadpool_postgres::Pool as DbPool;
     use std::convert::Infallible;
     use warp::http::StatusCode;
     use warp::Filter;
 
+    pub struct TemplateContext {
+        current_user: Option<User>,
+    }
+
+    impl TemplateContext {
+        pub fn new(current_user: Option<User>) -> Self {
+            Self { current_user }
+        }
+
+        pub fn current_user(&self) -> Option<&User> {
+            self.current_user.as_ref()
+        }
+    }
+
     #[derive(Template)]
     #[template(path = "index.html")]
-    struct IndexTemplate;
+    struct IndexTemplate {
+        ctx: TemplateContext,
+    }
 
-    pub async fn index() -> Result<impl warp::Reply, Infallible> {
-        Ok(IndexTemplate)
+    // TODO: only get a DB connection if the session is present.
+    pub async fn index(current_user: Option<User>) -> Result<impl warp::Reply, warp::Rejection> {
+        Ok(IndexTemplate { ctx: TemplateContext::new(current_user) })
     }
 
     pub async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
@@ -79,7 +98,8 @@ mod filter {
             message = "Invalid body";
         } else if let Some(e) = err.find::<Error>() {
             match e {
-                Error::DbQueryError(_) => {
+                Error::DbQueryError(e) => {
+                    eprintln!("could not execute request: {:?}", e);
                     code = StatusCode::BAD_REQUEST;
                     message = "Could not execute request";
                 }
@@ -105,14 +125,24 @@ mod filter {
 }
 
 mod routes {
+    use crate::auth;
     use crate::filter::{with_db, index, health};
     use deadpool_postgres::Pool as DbPool;
+    use serde::de::DeserializeOwned;
     use warp::Filter;
 
+    pub fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
+        where T: Send + DeserializeOwned
+    {
+        warp::body::content_length_limit(1024 * 16)
+            .and(warp::body::form())
+    }
+
     /// GET /
-    fn get_index() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn get_index(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path::end()
             .and(warp::get())
+            .and(auth::optional_user(pool))
             .and_then(index)
     }
 
@@ -125,7 +155,7 @@ mod routes {
     }
 
     pub fn routes(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        get_index()
+        get_index(pool.clone())
             .or(get_health(pool))
     }
 }
@@ -135,11 +165,18 @@ mod error {
 
     #[derive(Debug)]
     pub enum Error {
+        SerdeJsonError(serde_json::error::Error),
         DbPoolError(deadpool_postgres::PoolError),
         DbQueryError(tokio_postgres::Error),
     }
 
     impl warp::reject::Reject for Error {}
+
+    impl From<serde_json::error::Error> for Error {
+        fn from(err: serde_json::error::Error) -> Self {
+            Self::SerdeJsonError(err)
+        }
+    }
 
     impl From<deadpool_postgres::PoolError> for Error {
         fn from(err: deadpool_postgres::PoolError) -> Self {
@@ -150,6 +187,9 @@ mod error {
     impl fmt::Display for Error {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
+                &Error::SerdeJsonError(ref e) => {
+                    write!(f, "error serializing/deserializing JSON data: {0}", e)
+                }
                 &Error::DbPoolError(ref e) => {
                     write!(f, "error getting connection from DB pool: {0}", e)
                 }
@@ -200,10 +240,11 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     let conn = db::get_db_connection(&pool)
         .await
         .expect("get db connection error");
+    auth::init_db(&conn).await.expect("initialize database error");
     paste::init_db(&conn).await.expect("initialize database error");
 
     let routes = routes::routes(pool.clone())
-        .or(auth::routes())
+        .or(auth::routes(pool.clone()))
         .or(paste::routes(pool.clone()))
         .recover(filter::handle_rejection);
 

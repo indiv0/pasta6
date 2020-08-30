@@ -119,6 +119,8 @@ mod db {
 
 mod filter {
     use askama_warp::Template;
+    use crate::auth::User;
+    use crate::filter::TemplateContext;
     use crate::paste::db;
     use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
     use deadpool_postgres::Client as DbClient;
@@ -163,37 +165,37 @@ mod filter {
     #[derive(Template)]
     #[template(path = "paste.html")]
     struct PasteTemplate {
+        ctx: TemplateContext,
         _paste: Paste,
     }
 
     pub async fn get_paste(
         id: i32,
         db: DbClient,
+        // TODO: we don't actually need the username for this endpoint until
+        // _after_ we've done `db::get_paste` (that is, the ctx is necessary for
+        // the response only). So perhaps we could optimize away the DB query by
+        // only doing it afterwards?
+        current_user: Option<User>,
     ) -> Result<impl warp::Reply, warp::Rejection> {
         let paste = db::get_paste(&db, id)
             .await
             .map_err(|e| warp::reject::custom(e))?;
-        Ok(PasteTemplate { _paste: paste })
+        Ok(PasteTemplate { ctx: TemplateContext::new(current_user), _paste: paste })
     }
 }
 
 mod routes {
+    use crate::auth;
+    use crate::routes::form_body;
     use crate::filter::with_db;
     use crate::paste::filter;
     use deadpool_postgres::Pool as DbPool;
-    use serde::de::DeserializeOwned;
     use warp::Filter;
 
     fn bytes_body() -> impl Filter<Extract = (bytes::Bytes,), Error = warp::Rejection> + Clone {
         warp::body::content_length_limit(1024 * 16)
             .and(warp::body::bytes())
-    }
-
-    fn form_body<T>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone
-        where T: Send + DeserializeOwned
-    {
-        warp::body::content_length_limit(1024 * 16)
-            .and(warp::body::form())
     }
 
     /// GET /api/paste
@@ -226,7 +228,8 @@ mod routes {
     fn get_paste(pool: DbPool) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("paste" / i32)
             .and(warp::get())
-            .and(with_db(pool))
+            .and(with_db(pool.clone()))
+            .and(auth::optional_user(pool))
             .and_then(filter::get_paste)
     }
 

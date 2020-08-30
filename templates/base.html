@@ -20,9 +20,17 @@
         class="w-full block flex-grow sm:flex sm:items-center sm:w-auto">
         <div class="sm:flex-grow"></div>
         <div>
+          {% if ctx.current_user().is_some() -%}
+          <span
+            class="inline-block text-sm px-4 text-white">Logged in as {{ ctx.current_user().unwrap().username() }}</span>
+          <a
+            href="/logout"
+            class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 sm:mt-0">Logout</a>
+          {% else %}
           <a
             href="/register"
             class="inline-block text-sm px-4 py-2 leading-none border rounded text-white border-white hover:border-transparent hover:text-teal-500 hover:bg-white mt-4 sm:mt-0">Register</a>
+          {% endif %}
         </div>
       </div>
     </nav>
