@@ -1005,6 +1005,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pasta6_meta"
+version = "0.1.0"
+
+[[package]]
 name = "pasta6_server"
 version = "0.1.0"
 dependencies = [

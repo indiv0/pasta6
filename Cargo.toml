@@ -1,9 +1,8 @@
 [workspace]
 members = [
+    "pasta6_meta",
     "pasta6_server",
 ]
-
-default-members = ["pasta6_server"]
 
 [profile.dev.package."*"]
 opt-level = 2
