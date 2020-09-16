@@ -240,10 +240,15 @@ mod models {
 /// ```
 #[tokio::main]
 async fn main() -> Result<(), tokio_postgres::Error> {
+    main_inner().await
+}
+
+// `main_inner` is a separate function from `main` because rust doesn't provide
+// helpful messages for errors originating in a method annotated with `#[tokio::main]`.
+async fn main_inner() -> Result<(), tokio_postgres::Error> {
     use hyper::server::Server;
     use listenfd::ListenFd;
     use std::convert::Infallible;
-    use std::env;
     use warp::Filter;
 
     better_panic::install();
