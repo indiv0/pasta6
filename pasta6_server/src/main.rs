@@ -1,3 +1,7 @@
+use std::env;
+use tracing::info;
+use tracing_subscriber::fmt::format::FmtSpan;
+
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
 mod paste;
@@ -244,6 +248,8 @@ async fn main() -> Result<(), tokio_postgres::Error> {
 
     better_panic::install();
 
+    init_tracing();
+
     let pool = db::create_db_pool().expect("create db pool error");
 
     let conn = db::get_db_connection(&pool)
@@ -261,6 +267,10 @@ async fn main() -> Result<(), tokio_postgres::Error> {
         .or(paste::routes(pool.clone()))
         .recover(filter::handle_rejection);
 
+    // Wrap all the routes with a filter that creates a `tracing` span for
+    // each request we receive, including data about the request.
+    let routes = routes.with(warp::trace::request());
+
     // hyper lets us build a server from a TcpListener. Thus, we'll need to
     // convert our `warp::Filter` into a `hyper::service::MakeService` for use
     // with a `hyper::server::Server`.
@@ -276,16 +286,36 @@ async fn main() -> Result<(), tokio_postgres::Error> {
     // if listenfd doesn't take a TcpListener (i.e. we're not running via the
     // command above), we fall back to explicitly binding to a given host:port.
     let server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
+        info!("initializing server with listenfd");
         Server::from_tcp(l).unwrap()
     } else {
         let host: std::net::Ipv4Addr = env::var("PASTA6_HOST")
             .expect("PASTA6_HOST unset")
             .parse()
             .unwrap();
+        info!("initializing server on {}:{}", host, 3030);
         Server::bind(&(host, 3030).into())
     };
 
     server.serve(make_svc).await.unwrap();
 
     Ok(())
+}
+
+fn init_tracing() {
+    // Filter traces based on the RUST_LOG env var, or, if it's not set,
+    // default to show the output of the example.
+    let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| "pasta6_server=trace,tracing=info,warp=debug".to_owned());
+
+    // Configure the default `tracing` subscriber.
+    // The `fmt` subscriber from the `tracing-subscriber` crate logs `tracing`
+    // events to stdout. Other subscribers are available for integrating with
+    // distributed tracing systems such as OpenTelemetry.
+    tracing_subscriber::fmt()
+        // Use the filter we built above to determine which traces to record.
+        .with_env_filter(env_filter)
+        // Record an event when each span closes. This can be used to time our
+        // routes' durations!
+        .with_span_events(FmtSpan::CLOSE)
+        .init();
 }

@@ -2,7 +2,7 @@ watch_meta:
 	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch -x "run --package pasta6_meta"
 
 watch_server:
-	systemfd --no-pid -s http::0.0.0.0:3031 -- cargo watch -x "run --package pasta6_server"
+	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch -s "cargo run --package pasta6_server"
 
 styles:
 	yarn run tailwindcss build styles.css -o static/styles.css
