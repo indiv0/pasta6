@@ -1023,11 +1023,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "pasta6_meta"
+name = "pasta6_core"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "deadpool-postgres",
+ "listenfd",
+ "serde",
+ "serde_json",
+ "tokio-postgres",
+ "tracing",
+ "tracing-subscriber",
+ "warp",
+]
 
 [[package]]
-name = "pasta6_server"
+name = "pasta6_meta"
 version = "0.1.0"
 dependencies = [
  "askama",
@@ -1037,16 +1048,34 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
- "hyper",
- "listenfd",
+ "pasta6_core",
  "rand 0.7.3",
  "serde",
  "serde_derive",
  "serde_json",
  "tokio",
  "tokio-postgres",
- "tracing",
- "tracing-subscriber",
+ "warp",
+]
+
+[[package]]
+name = "pasta6_paste"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "askama_warp",
+ "async-trait",
+ "better-panic",
+ "bytes",
+ "chrono",
+ "deadpool-postgres",
+ "pasta6_core",
+ "rand 0.7.3",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
  "warp",
 ]
 

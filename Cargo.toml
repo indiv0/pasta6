@@ -1,7 +1,8 @@
 [workspace]
 members = [
+    "pasta6_core",
     "pasta6_meta",
-    "pasta6_server",
+    "pasta6_paste",
 ]
 
 [profile.dev.package."*"]

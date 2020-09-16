@@ -149,3 +149,17 @@ export PG_USER=pastaaaaaa
 export PG_PASSWORD=pastaaaaaa
 sudo -u pastaaaaaa /home/pastaaaaaa/pastaaaaaa
 ```
+
+## Certificates
+
+To secure the website, generate some certificates with:
+
+```
+sudo certbot certonly --manual --preferred-challenges=dns --email=admin@example.com --server https://acme-v02.api.letsencrypt.org/directory --agree-tos -d *.example.com
+```
+
+Then, generate a strong Diffie-Hellman group:
+
+```
+sudo openssl dhparam -out /etc/nginx/dhparam.pem 4096
+```
