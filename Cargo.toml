@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "pasta6_core",
+    "pasta6_home",
     "pasta6_meta",
     "pasta6_paste",
 ]

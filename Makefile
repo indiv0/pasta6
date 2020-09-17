@@ -1,8 +1,14 @@
+watch_trigger:
+	cargo watch -i .trigger -x build -s 'touch .trigger'
+
+watch_home:
+	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_home"
+
 watch_meta:
-	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch -s "cargo run --package pasta6_meta"
+	systemfd --no-pid -s http::0.0.0.0:3031 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_meta"
 
 watch_paste:
-	systemfd --no-pid -s http::0.0.0.0:3031 -- cargo watch -s "cargo run --package pasta6_paste"
+	systemfd --no-pid -s http::0.0.0.0:3032 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_paste"
 
 styles:
 	yarn run tailwindcss build styles.css -o static/styles.css

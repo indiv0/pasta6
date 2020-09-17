@@ -1038,6 +1038,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pasta6_home"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "askama_warp",
+ "better-panic",
+ "deadpool-postgres",
+ "pasta6_core",
+ "tokio",
+ "tokio-postgres",
+ "warp",
+]
+
+[[package]]
 name = "pasta6_meta"
 version = "0.1.0"
 dependencies = [
