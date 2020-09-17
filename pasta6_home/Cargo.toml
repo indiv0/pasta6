@@ -4,19 +4,22 @@ version = "0.1.0"
 authors = ["Nikita Pekin <contact@nikitapek.in>"]
 edition = "2018"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "pasta6_home"
+
 [dependencies]
 askama = "0.10.3"
 askama_warp = "0.10.0"
-#async-trait = "0.1.36"
 better-panic = "0.2.0"
-#bytes = "0.5.6"
-#chrono = "0.4.13"
 deadpool-postgres = "0.5.6"
 pasta6_core = { path = "../pasta6_core" }
-#rand = "0.7.3"
-#serde = { version = "1.0.115", features = ["derive"] }
-#serde_derive = "1.0.115"
-#serde_json = "1.0.57"
 tokio = { version = "0.2.22", features = ["macros"] }
 tokio-postgres = { version = "0.5.5", features = ["with-chrono-0_4"] }
 warp = "0.2.4"
+
+[dev-dependencies]
+reqwest = "0.10.8"

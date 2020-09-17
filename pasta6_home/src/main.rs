@@ -1,8 +1,5 @@
-use pasta6_core::{get_db_connection, init_tracing, init_server, create_db_pool, optional_user, with_db, CoreUserStore};
-use warp::{path::end, Filter, get};
-use filter::{health, index, handle_rejection};
-
-mod filter;
+use pasta6_core::{bind, init_tracing, create_db_pool};
+use pasta6_home::run;
 
 /// # Autoreload
 /// Install `systemfd` and `cargo-watch`:
@@ -22,27 +19,11 @@ async fn main() -> Result<(), tokio_postgres::Error> {
 // helpful messages for errors originating in a method annotated with `#[tokio::main]`.
 async fn main_inner() -> Result<(), tokio_postgres::Error> {
     better_panic::install();
-
     init_tracing("pasta6_home");
 
+    let listener = bind();
     let pool = create_db_pool().expect("create db pool error");
+    run(listener, pool).await;
 
-    let _conn = get_db_connection(&pool)
-        .await
-        .expect("get db connection error");
-
-    let routes =
-        // GET /
-        end()
-            .and(get())
-            .and(optional_user::<CoreUserStore>(pool.clone()))
-            .and_then(index)
-        // GET /health
-        .or(warp::path("health")
-            .and(get())
-            .and(with_db(pool.clone()))
-            .and_then(health))
-        .recover(handle_rejection);
-
-    Ok(init_server(routes).await)
+    Ok(())
 }

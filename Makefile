@@ -25,3 +25,6 @@ dependencies:
 		-v /etc/nginx/dhparam.pem:/etc/nginx/dhparam.pem:ro \
 		nginx:1.19.2
 	docker run -d --rm --name postgres -p 5432:5432 -e POSTGRES_USER=$(POSTGRES_USER) -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) -e POSTGRES_DB=$(POSTGRES_DB) postgres:12.3 postgres -c log_statement=all
+
+test:
+	cargo test

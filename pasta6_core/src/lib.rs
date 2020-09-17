@@ -6,7 +6,7 @@ pub use auth::{UserStore, CoreUserStore, optional_user, row_to_user, Session, SE
 pub use error::{Error, ErrorResponse};
 pub use filter::{get_db_connection, with_db, TemplateContext};
 pub use routes::form_body;
-pub use server::{init_server, init_tracing};
+pub use server::{init_server, init_server2, bind, init_tracing};
 
 mod auth;
 mod error;
