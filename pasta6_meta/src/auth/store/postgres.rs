@@ -1,30 +1,12 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use deadpool_postgres::Client;
-use pasta6_core::{Error, Session};
+use pasta6_core::{Error, Session, User};
 use super::UserStore;
-use super::User as UserTrait;
-use super::super::models::RegisterForm;
+use super::{MetaUser, super::models::RegisterForm};
 use tokio_postgres::Row;
 
-const TABLE: &str = "user";
+const TABLE: &str = "p6_user";
 const SELECT_FIELDS: &str = "id, created_at, username, password, session";
-
-// TODO: this belongs in the above module, but then we'd have a naming conflict
-pub(crate) struct User {
-    // TODO: look into u32 for identifiers here and elsewhere
-    id: i32,
-    _created_at: DateTime<Utc>,
-    _username: String,
-    _password: String,
-    _session: Option<String>,
-}
-
-impl UserTrait for User {
-    fn id(&self) -> i32 {
-        self.id
-    }
-}
 
 pub(crate) struct PostgresStore<'a> {
     db: &'a Client,
@@ -38,9 +20,7 @@ impl<'a> PostgresStore<'a> {
 
 #[async_trait]
 impl UserStore for PostgresStore<'_> {
-    type User = User;
-
-    async fn create_user(&self, form: &RegisterForm) -> Result<Self::User, Error> {
+    async fn create_user(&self, form: &RegisterForm) -> Result<MetaUser, Error> {
         // TODO: use a prepared statement.
         let query = format!(
             "INSERT INTO {} (username, password) VALUES ($1, $2) RETURNING *",
@@ -51,10 +31,12 @@ impl UserStore for PostgresStore<'_> {
             .query_one(query.as_str(), &[&form.username(), &form.password()])
             .await
             .map_err(Error::DbQueryError)?;
-        Ok(FromPostgresRow::from_postgres_row(&row))
+        Ok(row_to_user(&row))
     }
 
-    async fn set_session(&self, user: &Self::User, session: &Session) -> Result<(), Error> {
+    async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
+        where U: User + Sync,
+    {
         let query = format!("UPDATE {} SET session = $1 WHERE id = $2", TABLE);
         let row_count = self
             .db
@@ -65,31 +47,29 @@ impl UserStore for PostgresStore<'_> {
         assert_eq!(row_count, 1);
         Ok(())
     }
+}
+
+#[async_trait]
+impl pasta6_core::UserStore for PostgresStore<'_> {
+    type User = MetaUser;
 
     // TODO: we really only need the username here, so why fetch the whole user?
-    async fn get_user_by_session(&self, session: &Session) -> Result<Option<Self::User>, Error> {
+    async fn get_user_by_session_id(db: &Client, session: &Session) -> Result<Option<MetaUser>, Error> {
         let query = format!("SELECT {} FROM {} WHERE session = $1", SELECT_FIELDS, TABLE);
-        let row = self
-            .db
+        let row = db
             .query_opt(query.as_str(), &[&session.session_id()])
             .await
             .map_err(Error::DbQueryError)?;
-        Ok(row.as_ref().map(FromPostgresRow::from_postgres_row))
+        Ok(row.as_ref().map(row_to_user))
     }
 }
 
-trait FromPostgresRow: Sized {
-    fn from_postgres_row(r: &Row) -> Self;
-}
-
-impl FromPostgresRow for User {
-    fn from_postgres_row(r: &Row) -> Self {
-        Self {
-            id: r.get(0),
-            _created_at: r.get(1),
-            _username: r.get(2),
-            _password: r.get(3),
-            _session: r.get(4),
-        }
-    }
+// TODO: does this belong here or in models?
+fn row_to_user(row: &Row) -> MetaUser {
+    let id = row.get(0);
+    let created_at = row.get(1);
+    let username = row.get(2);
+    let password = row.get(3);
+    let session = row.get(4);
+    MetaUser::new(id, created_at, username, password, session)
 }

@@ -1,23 +1,56 @@
 use async_trait::async_trait;
 use super::models::RegisterForm;
-use pasta6_core::{Error, Session};
+use pasta6_core::{Error, Session, User};
+use chrono::{Utc, DateTime};
 pub(crate) use postgres::PostgresStore;
-// TODO: call this `User` and the trait `UserTrait`
-pub(crate) use postgres::User as UserStruct;
 
 mod postgres;
 
-pub(crate) trait User {
-    fn id(&self) -> i32;
+pub(crate) struct MetaUser {
+    // TODO: look into u32 for identifiers here and elsewhere
+    id: i32,
+    created_at: DateTime<Utc>,
+    username: String,
+    _password: String,
+    _session: Option<String>,
+}
+
+impl MetaUser {
+    pub(crate) fn new(
+        id: i32,
+        created_at: DateTime<Utc>,
+        username: String,
+        password: String,
+        session: Option<String>,
+    ) -> Self {
+        Self {
+            id,
+            created_at,
+            username,
+            _password: password,
+            _session: session,
+        }
+    }
+
+    pub(crate) fn created_at(&self) -> &DateTime<Utc> {
+        &self.created_at
+    }
+}
+
+impl User for MetaUser {
+    fn id(&self) -> i32 {
+        self.id
+    }
+
+    fn username(&self) -> &str {
+        &self.username
+    }
 }
 
 #[async_trait]
 pub(crate) trait UserStore {
-    type User: User;
+    async fn create_user(&self, form: &RegisterForm) -> Result<MetaUser, Error>;
 
-    async fn create_user(&self, form: &RegisterForm) -> Result<Self::User, Error>;
-
-    async fn set_session(&self, user: &Self::User, session: &Session) -> Result<(), Error>;
-
-    async fn get_user_by_session(&self, session: &Session) -> Result<Option<Self::User>, Error>;
+    async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
+        where U: User + Sync;
 }

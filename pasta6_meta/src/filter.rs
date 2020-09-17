@@ -6,12 +6,16 @@ use warp::http::StatusCode;
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate {
-    ctx: TemplateContext,
+struct IndexTemplate<U>
+    where U: User + Send,
+{
+    ctx: TemplateContext<U>,
 }
 
 // TODO: only get a DB connection if the session is present.
-pub(crate) async fn index(current_user: Option<User>) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn index<U>(current_user: Option<U>) -> Result<impl warp::Reply, warp::Rejection>
+    where U: User + Send,
+{
     Ok(IndexTemplate {
         ctx: TemplateContext::new(current_user),
     })

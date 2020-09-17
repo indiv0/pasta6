@@ -1,19 +1,20 @@
 use super::db;
-use super::models::RegisterForm;
+use super::{MetaUser, models::RegisterForm};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{Session, SESSION_COOKIE_NAME, User, TemplateContext};
+use pasta6_core::{Session, SESSION_COOKIE_NAME, User, TemplateContext, BaseUser};
 use rand::Rng;
 use warp::http::Uri;
 
 #[derive(Template)]
 #[template(path = "register.html")]
-struct RegisterTemplate {
-    ctx: TemplateContext,
+struct RegisterTemplate
+{
+    ctx: TemplateContext<BaseUser>,
 }
 
 pub(crate) async fn get_register(
-    current_user: Option<User>,
+    current_user: Option<BaseUser>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(RegisterTemplate {
         ctx: TemplateContext::new(current_user),
@@ -49,5 +50,19 @@ pub(crate) async fn post_register(
     );
     Ok(warp::redirect::redirect(redirect_uri)).map(|reply| {
         warp::reply::with_header(reply, warp::http::header::SET_COOKIE, session_cookie)
+    })
+}
+
+#[derive(Template)]
+#[template(path = "profile.html")]
+struct ProfileTemplate {
+    ctx: TemplateContext<MetaUser>,
+}
+
+pub(crate) async fn get_profile(
+    current_user: Option<MetaUser>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    Ok(ProfileTemplate {
+        ctx: TemplateContext::new(current_user)
     })
 }

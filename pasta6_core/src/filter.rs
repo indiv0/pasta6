@@ -1,16 +1,20 @@
 use crate::{User, Error::{self, DbPoolError}};
 use warp::{any, reject, Rejection, Filter};
 use deadpool_postgres::{Client, Pool};
-pub struct TemplateContext {
-    current_user: Option<User>,
+pub struct TemplateContext<U>
+    where U: User,
+{
+    current_user: Option<U>,
 }
 
-impl TemplateContext {
-    pub fn new(current_user: Option<User>) -> Self {
+impl<U> TemplateContext<U>
+    where U: User,
+{
+    pub fn new(current_user: Option<U>) -> Self {
         Self { current_user }
     }
 
-    pub fn current_user(&self) -> Option<&User> {
+    pub fn current_user(&self) -> Option<&U> {
         self.current_user.as_ref()
     }
 }

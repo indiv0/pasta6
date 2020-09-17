@@ -1,4 +1,4 @@
-use pasta6_core::{get_db_connection, init_tracing, init_server, create_db_pool, optional_user, with_db};
+use pasta6_core::{get_db_connection, init_tracing, init_server, create_db_pool, optional_user, with_db, CoreUserStore};
 use warp::{path::end, Filter, get};
 use filter::{health, index, handle_rejection};
 
@@ -35,7 +35,7 @@ async fn main_inner() -> Result<(), tokio_postgres::Error> {
         // GET /
         end()
             .and(get())
-            .and(optional_user(pool.clone()))
+            .and(optional_user::<CoreUserStore>(pool.clone()))
             .and_then(index)
         // GET /health
         .or(warp::path("health")

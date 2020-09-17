@@ -1,7 +1,5 @@
-use super::store::{UserStore, PostgresStore};
+use super::store::{UserStore, PostgresStore, MetaUser};
 use super::models::RegisterForm;
-// TODO: remove this alias
-use super::store::UserStruct;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{Error, Session};
 
@@ -20,12 +18,12 @@ pub(crate) async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Err
     Ok(())
 }
 
-pub(crate) async fn create_user(db: &DbClient, form: &RegisterForm) -> Result<UserStruct, Error> {
+pub(crate) async fn create_user(db: &DbClient, form: &RegisterForm) -> Result<MetaUser, Error> {
     let store = PostgresStore::new(db);
     store.create_user(form).await
 }
 
-pub(crate) async fn set_session(db: &DbClient, user: &UserStruct, session: &Session) -> Result<(), Error> {
+pub(crate) async fn set_session(db: &DbClient, user: &MetaUser, session: &Session) -> Result<(), Error> {
     let store = PostgresStore::new(db);
     store.set_session(user, session).await
 }

@@ -1,23 +1,56 @@
 use crate::{with_db, Error, Error::DbQueryError};
+use async_trait::async_trait;
 use deadpool_postgres::{Client, Pool};
 use warp::{reject, Filter, Rejection};
 use tokio_postgres::Row;
 use std::convert::Infallible;
 
 pub use session::Session;
-pub use user::User;
+pub use user::{BaseUser, User};
 
 mod session;
 mod user;
 
 // We use the table `p6_user` because `user` is a reserved keyword in postgres.
 const USER_TABLE: &str = "p6_user";
-const USER_SELECT_FIELDS: &str = "id, created_at, username, password, session";
+const USER_SELECT_FIELDS: &str = "id, username";
 pub const SESSION_COOKIE_NAME: &str = "session";
 
-pub fn optional_user(
+#[async_trait]
+pub trait UserStore {
+    type User: User;
+
+    async fn get_user_by_session_id(
+        db: &Client,
+        session: &Session,
+    ) -> Result<Option<Self::User>, Error>;
+}
+
+pub struct CoreUserStore;
+
+#[async_trait]
+impl UserStore for CoreUserStore {
+    type User = BaseUser;
+
+    // TODO: we really only need the username here, so why fetch the whole user?
+    async fn get_user_by_session_id(
+        db: &Client,
+        session: &Session,
+    ) -> Result<Option<Self::User>, Error> {
+        let query = format!("SELECT {} FROM {} WHERE session = $1", USER_SELECT_FIELDS, USER_TABLE);
+        let row = db
+            .query_opt(query.as_str(), &[&session.session_id()])
+            .await
+            .map_err(DbQueryError)?;
+        Ok(row.map(|r| row_to_user(&r)))
+    }
+}
+
+pub fn optional_user<S>(
     pool: Pool,
-) -> impl Filter<Extract = (Option<User>,), Error = Rejection> + Clone {
+) -> impl Filter<Extract = (Option<S::User>,), Error = Rejection> + Clone
+    where S: UserStore,
+{
     optional_session()
         .and(with_db(pool))
         .and_then(|maybe_session, db| async move {
@@ -25,7 +58,7 @@ pub fn optional_user(
                 return Ok(None);
             }
 
-            get_user_by_session_id(&db, &maybe_session.unwrap())
+            S::get_user_by_session_id(&db, &maybe_session.unwrap())
                 .await
                 .map_err(|e| reject::custom(e))
         })
@@ -49,25 +82,12 @@ pub fn optional_session(
     })
 }
 
-// TODO: we really only need the username here, so why fetch the whole user?
-async fn get_user_by_session_id(
-    db: &Client,
-    session: &Session,
-) -> Result<Option<User>, Error> {
-    let query = format!("SELECT {} FROM {} WHERE session = $1", USER_SELECT_FIELDS, USER_TABLE);
-    let row = db
-        .query_opt(query.as_str(), &[&session.session_id()])
-        .await
-        .map_err(DbQueryError)?;
-    Ok(row.map(|r| row_to_user(&r)))
-}
-
 // TODO: does this belong here or in models?
-fn row_to_user(row: &Row) -> User {
+pub fn row_to_user(row: &Row) -> BaseUser {
     let id = row.get(0);
-    let created_at = row.get(1);
-    let username = row.get(2);
-    let password = row.get(3);
-    let session = row.get(4);
-    User::new(id, created_at, username, password, session)
+    //let created_at = row.get(1);
+    let username = row.get(1);
+    //let password = row.get(3);
+    //let session = row.get(4);
+    BaseUser::new(id, username)
 }

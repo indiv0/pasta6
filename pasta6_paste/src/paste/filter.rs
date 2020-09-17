@@ -2,7 +2,7 @@ use crate::paste::db;
 use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{TemplateContext, User};
+use pasta6_core::{TemplateContext, User, BaseUser};
 use std::str::FromStr;
 use warp::http::Uri;
 
@@ -41,7 +41,7 @@ pub(crate) async fn create_paste(
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteTemplate {
-    ctx: TemplateContext,
+    ctx: TemplateContext<BaseUser>,
     _paste: Paste,
 }
 
@@ -52,7 +52,7 @@ pub(crate) async fn get_paste(
     // _after_ we've done `db::get_paste` (that is, the ctx is necessary for
     // the response only). So perhaps we could optimize away the DB query by
     // only doing it afterwards?
-    current_user: Option<User>,
+    current_user: Option<BaseUser>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let paste = db::get_paste(&db, id)
         .await

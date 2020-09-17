@@ -2,7 +2,7 @@ use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod, Pool, config::Co
 use std::env;
 use tokio_postgres::NoTls;
 
-pub use auth::{optional_user, Session, SESSION_COOKIE_NAME, User};
+pub use auth::{UserStore, CoreUserStore, optional_user, row_to_user, Session, SESSION_COOKIE_NAME, BaseUser, User};
 pub use error::{Error, ErrorResponse};
 pub use filter::{get_db_connection, with_db, TemplateContext};
 pub use routes::form_body;
