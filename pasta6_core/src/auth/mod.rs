@@ -14,7 +14,7 @@ mod user;
 // We use the table `p6_user` because `user` is a reserved keyword in postgres.
 const USER_TABLE: &str = "p6_user";
 const USER_SELECT_FIELDS: &str = "id, username";
-pub const SESSION_COOKIE_NAME: &str = "session";
+pub const SESSION_COOKIE_NAME: &str = "__Secure-session";
 
 #[async_trait]
 pub trait UserStore {
@@ -64,6 +64,7 @@ pub fn optional_user<S>(
         })
 }
 
+// TODO: only load the session if it's present in the DB
 pub fn optional_session(
 ) -> impl Filter<Extract = (Option<Session>,), Error = Infallible> + Clone {
     warp::filters::cookie::optional(SESSION_COOKIE_NAME).map(|maybe_cookie: Option<String>| {

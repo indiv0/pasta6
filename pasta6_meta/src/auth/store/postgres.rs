@@ -47,6 +47,29 @@ impl UserStore for PostgresStore<'_> {
         assert_eq!(row_count, 1);
         Ok(())
     }
+
+    async fn unset_session(&self, session: &Session) -> Result<(), Error> {
+        let query = format!("UPDATE {} SET session = NULL WHERE session = $1", TABLE);
+        let row_count = self
+            .db
+            .execute(query.as_str(), &[&session.session_id()])
+            .await
+            .map_err(Error::DbQueryError)?;
+        // TODO: are we OK with this returning 0 if we're un-setting an already unset session?
+        // TODO: this can potentially be abused to unset multiple users' sessions at once, if the UNIQUE constraint on sessions is removed.
+        assert_eq!(row_count, 1);
+        Ok(())
+    }
+
+    async fn get_user_by_username(&self, username: &str) -> Result<Option<MetaUser>, Error> {
+        let query = format!("SELECT {} FROM {} WHERE username = $1", SELECT_FIELDS, TABLE);
+        let row = self
+            .db
+            .query_opt(query.as_str(), &[&username])
+            .await
+            .map_err(Error::DbQueryError)?;
+        Ok(row.as_ref().map(row_to_user))
+    }
 }
 
 #[async_trait]

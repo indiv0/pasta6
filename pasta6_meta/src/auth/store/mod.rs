@@ -11,7 +11,7 @@ pub(crate) struct MetaUser {
     id: i32,
     created_at: DateTime<Utc>,
     username: String,
-    _password: String,
+    password: String,
     _session: Option<String>,
 }
 
@@ -27,7 +27,7 @@ impl MetaUser {
             id,
             created_at,
             username,
-            _password: password,
+            password,
             _session: session,
         }
     }
@@ -53,4 +53,12 @@ pub(crate) trait UserStore {
 
     async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
         where U: User + Sync;
+
+    async fn unset_session(&self, session: &Session) -> Result<(), Error>;
+
+    async fn get_user_by_username(&self, username: &str) -> Result<Option<MetaUser>, Error>;
+}
+
+pub(crate) fn verify_password(user: &MetaUser, password: &str) -> bool {
+    user.password == password
 }

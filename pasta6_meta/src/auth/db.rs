@@ -27,3 +27,8 @@ pub(crate) async fn set_session(db: &DbClient, user: &MetaUser, session: &Sessio
     let store = PostgresStore::new(db);
     store.set_session(user, session).await
 }
+
+pub(crate) async fn unset_session(db: &DbClient, session: &Session) -> Result<(), Error> {
+    let store = PostgresStore::new(db);
+    store.unset_session(session).await
+}

@@ -1,7 +1,7 @@
-use pasta6_core::{get_db_connection, optional_user, with_db, form_body, CoreUserStore, init_server2};
+use pasta6_core::{get_db_connection, optional_user, with_db, form_body, CoreUserStore, init_server2, optional_session};
 use warp::{path::end, Filter, get, post};
 use filter::{health, index, handle_rejection};
-use auth::{post_register, get_register, PostgresStore, get_profile};
+use auth::{post_register, get_register, PostgresStore, get_profile, get_logout, get_login, post_login};
 use std::net::TcpListener;
 use deadpool_postgres::Pool;
 
@@ -50,6 +50,28 @@ pub async fn run(listener: TcpListener, pool: Pool) {
             .and(get())
             .and(optional_user::<PostgresStore>(pool.clone()))
             .and_then(get_profile))
+        // GET /logout
+        .or(warp::path("logout")
+            .and(get())
+            .and(optional_session())
+            .and(with_db(pool.clone()))
+            .and_then(get_logout))
+        // GET /login
+        .or(warp::path("login")
+            .and(get())
+            .and_then(get_login))
+        // POST /login
+        .or(warp::path("login")
+            .and(post())
+            // TODO: if we submit a malformed form (e.g. no `input` with `name="username"` then on the console we see:
+            //
+            //     body deserialize error: BodyDeserializeError { cause: Error { err: "missing field `username`" } }
+            //
+            //  The JSON response is just `{"message": "Invalid body"}`. We should probably take
+            //  users to a 4xx page or display a proper error on the website in this scenario.
+            .and(form_body())
+            .and(with_db(pool.clone()))
+            .and_then(post_login))
         .recover(handle_rejection);
 
     init_server2(listener, routes).await.expect("server error")
