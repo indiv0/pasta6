@@ -1,13 +1,13 @@
 {% extends "../../pasta6_core/templates/base.html" %}
 
-{% block title %}{{ _paste.id() }} -- pasta6{% endblock %}
+{% block title %}{{ paste.id() }} -- pasta6{% endblock %}
 
 {% block content %}
     <div
       class="flex items-center justify-between flex-wrap bg-teal-200 px-6 py-2">
       <span
-        class="font-semibold tracking-tight">created: {{ _paste.created_at() }}</span>
+        class="font-semibold tracking-tight">created: {{ paste.created_at() }}</span>
     </div>
     <pre
-      class="flex items-center justify-between flex-wrap px-6 py-6"><code>{{ _paste.data() }}</code></pre>
+      class="flex items-center justify-between flex-wrap px-6 py-6"><code>{{ paste.data() }}</code></pre>
 {% endblock %}

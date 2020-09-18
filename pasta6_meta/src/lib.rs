@@ -5,6 +5,9 @@ use auth::{post_register, get_register, PostgresStore, get_profile, get_logout, 
 use std::net::TcpListener;
 use deadpool_postgres::Pool;
 
+// TODO: make this configurable at runtime
+pub(crate) const DOMAIN: &str = "p6.rs";
+
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
 mod filter;

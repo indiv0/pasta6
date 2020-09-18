@@ -2,7 +2,7 @@ use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{User, TemplateContext, BaseUser};
 use warp::{redirect, hyper::Uri, http::header, reply::with_header};
-use crate::auth::{models::RegisterForm, db};
+use crate::{DOMAIN, auth::{models::RegisterForm, db}};
 use super::{generate_random_session, set_session};
 
 #[derive(Template)]
@@ -16,7 +16,7 @@ pub(crate) async fn get_register(
     current_user: Option<BaseUser>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(RegisterTemplate {
-        ctx: TemplateContext::new(current_user),
+        ctx: TemplateContext::new(current_user, DOMAIN.to_owned()),
     })
 }
 

@@ -5,17 +5,22 @@ pub struct TemplateContext<U>
     where U: User,
 {
     current_user: Option<U>,
+    domain: String,
 }
 
 impl<U> TemplateContext<U>
     where U: User,
 {
-    pub fn new(current_user: Option<U>) -> Self {
-        Self { current_user }
+    pub fn new(current_user: Option<U>, domain: String) -> Self {
+        Self { current_user, domain }
     }
 
     pub fn current_user(&self) -> Option<&U> {
         self.current_user.as_ref()
+    }
+
+    pub fn domain(&self) -> &str {
+        &self.domain
     }
 }
 

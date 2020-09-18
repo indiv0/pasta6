@@ -50,7 +50,7 @@ Assuming you have a EC2 t2.micro running Ubuntu 18.04.5 LTS, accessible at
 `ubuntu@ec2-xxx-xxx-xxx-xxx.ca-central-1.compute.amazonaws.com`, you can follow
 these steps to deploy pasta6 from scratch.
 
-First, modify the EC2 instance's security group to allow tcp/80 traffic.
+First, modify the EC2 instance's security group to allow tcp/80 and tcp/443 traffic.
 
 Compile & copy the `pastaaaaaa` binary to the instance:
 ```sh
@@ -151,15 +151,52 @@ sudo -u pastaaaaaa /home/pastaaaaaa/pastaaaaaa
 ```
 
 ## Certificates
+### Development
 
 To secure the website, generate some certificates with:
 
 ```
-sudo certbot certonly --manual --preferred-challenges=dns --email=admin@example.com --server https://acme-v02.api.letsencrypt.org/directory --agree-tos -d *.example.com
+sudo certbot certonly --manual --preferred-challenges=dns --email=admin@example.com --server https://acme-v02.api.letsencrypt.org/directory --agree-tos -d example.com -d *.example.com
 ```
 
 Then, generate a strong Diffie-Hellman group:
-
 ```
 sudo openssl dhparam -out /etc/nginx/dhparam.pem 4096
 ```
+
+### Production
+
+Install certbot:
+
+    snap install --classic certbot
+
+Install the cloudflare plugin for certbot:
+
+    snap set certbot trust-plugin-with-root=ok
+    snap install --beta certbot-dns-cloudflare
+
+Create a file to contain our cloudflare API token:
+
+    sudo mkdir /root/.secrets
+    sudo chmod 0700 /root/.secrets/
+    sudo touch /root/.secrets/cloudflare.cfg
+    sudo chmod 0400 /root/.secrets/cloudflare.cfg
+
+Go to https://dash.cloudflare.com/profile/api-tokens and generate a token with `Zone:DNS:Edit` permissions.
+Do not use your global API token!
+
+Edit the `/root/.secrets/cloudflare.cfg` using nano:
+
+    sudo nano /root/.secrets/cloudflare.cfg
+
+Add your cloudflare API token:
+
+    dns_cloudflare_api_token = 0123456789abcdef0123456789abcdef01234567
+
+Generate the certificates:
+
+    sudo ./certs-install.sh
+
+You can renew the certificates as well:
+
+    sudo ./certs-renew.sh

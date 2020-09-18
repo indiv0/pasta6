@@ -3,6 +3,7 @@ use deadpool_postgres::Client as DbClient;
 use pasta6_core::{Error, User, TemplateContext, ErrorResponse, BaseUser};
 use std::convert::Infallible;
 use warp::http::StatusCode;
+use crate::DOMAIN;
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -13,7 +14,7 @@ struct IndexTemplate {
 // TODO: only get a DB connection if the session is present.
 pub(crate) async fn index(current_user: Option<BaseUser>) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(IndexTemplate {
-        ctx: TemplateContext::new(current_user),
+        ctx: TemplateContext::new(current_user, DOMAIN.to_owned()),
     })
 }
 

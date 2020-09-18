@@ -1,5 +1,5 @@
 use crate::paste::db;
-use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
+use crate::{DOMAIN, paste::models::{self, Paste, PasteCreateResponse, PasteForm}};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{TemplateContext, User, BaseUser};
@@ -42,7 +42,7 @@ pub(crate) async fn create_paste(
 #[template(path = "paste.html")]
 struct PasteTemplate {
     ctx: TemplateContext<BaseUser>,
-    _paste: Paste,
+    paste: Paste,
 }
 
 pub(crate) async fn get_paste(
@@ -58,7 +58,7 @@ pub(crate) async fn get_paste(
         .await
         .map_err(|e| warp::reject::custom(e))?;
     Ok(PasteTemplate {
-        ctx: TemplateContext::new(current_user),
-        _paste: paste,
+        ctx: TemplateContext::new(current_user, DOMAIN.to_owned()),
+        paste,
     })
 }

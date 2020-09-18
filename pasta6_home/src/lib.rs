@@ -6,6 +6,9 @@ use deadpool_postgres::Pool;
 
 mod filter;
 
+// TODO: make this configurable at runtime.
+pub(crate) const DOMAIN: &str = "p6.rs";
+
 pub async fn run(listener: TcpListener, pool: Pool) {
     let _conn = get_db_connection(&pool)
         .await

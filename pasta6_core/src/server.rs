@@ -14,7 +14,8 @@ pub fn bind() -> TcpListener {
         l
     } else {
         let host: Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
-        let address = format!("http://{}:{}", host, 3030);
+        let port: u16 = env::var("PASTA6_PORT").expect("PASTA6_PORT unset").parse().unwrap();
+        let address = format!("{}:{}", host, port);
         info!("initializing server on {}", address);
         TcpListener::bind(address).expect("failed to bind")
     }
@@ -84,7 +85,7 @@ pub async fn init_server2<F>(listener: TcpListener, routes: F) -> Result<(), hyp
 pub fn init_tracing(crate_name: &str) {
     // Filter traces based on the RUST_LOG env var, or, if it's not set,
     // default to show the output of the example.
-    let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| format!("{}=trace,tracing=info,warp=debug", crate_name));
+    let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| format!("pasta6_core=trace,{}=trace,tracing=info,warp=debug", crate_name));
 
     // Configure the default `tracing` subscriber.
     // The `fmt` subscriber from the `tracing-subscriber` crate logs `tracing`

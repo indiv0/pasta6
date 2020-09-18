@@ -1,5 +1,6 @@
 use pasta6_core::{Session, SESSION_COOKIE_NAME};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use crate::DOMAIN;
 
 mod login;
 mod logout;
@@ -12,7 +13,6 @@ pub(crate) use register::{get_register, post_register};
 pub(crate) use profile::get_profile;
 
 const SESSION_ID_LENGTH: usize = 30;
-const DOMAIN: &str = "uh.rs";
 
 fn generate_random_session() -> Session {
     // TODO: generate the session ID in a cryptographically secure way.

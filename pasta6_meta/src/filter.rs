@@ -3,6 +3,7 @@ use deadpool_postgres::Client as DbClient;
 use pasta6_core::{Error, User, TemplateContext, ErrorResponse};
 use std::convert::Infallible;
 use warp::http::StatusCode;
+use crate::DOMAIN;
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -17,7 +18,7 @@ pub(crate) async fn index<U>(current_user: Option<U>) -> Result<impl warp::Reply
     where U: User + Send,
 {
     Ok(IndexTemplate {
-        ctx: TemplateContext::new(current_user),
+        ctx: TemplateContext::new(current_user, DOMAIN.to_owned()),
     })
 }
 

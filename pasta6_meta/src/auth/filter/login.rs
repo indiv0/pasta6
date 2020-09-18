@@ -2,7 +2,7 @@ use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{User, TemplateContext, BaseUser};
 use warp::{redirect, hyper::Uri, http::header, reply::with_header};
-use crate::auth::{models::LoginForm, db, PostgresStore, store::{verify_password, UserStore}};
+use crate::{DOMAIN, auth::{models::LoginForm, db, PostgresStore, store::{verify_password, UserStore}}};
 use super::{generate_random_session, set_session};
 
 #[derive(Template)]
@@ -14,7 +14,7 @@ struct LoginTemplate
 
 pub(crate) async fn get_login() -> Result<impl warp::Reply, warp::Rejection> {
     Ok(LoginTemplate {
-        ctx: TemplateContext::new(None),
+        ctx: TemplateContext::new(None, DOMAIN.to_owned()),
     })
 }
 

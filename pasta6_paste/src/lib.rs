@@ -12,6 +12,8 @@ use deadpool_postgres::Pool;
 mod filter;
 mod paste;
 
+// TODO: make this configurable at runtime
+pub(crate) const DOMAIN: &str = "p6.rs";
 const MAX_CONTENT_LENGTH: u64 = 1024 * 16; // 16KB
 
 pub async fn run(listener: TcpListener, pool: Pool) {
