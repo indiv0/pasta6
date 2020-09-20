@@ -1,26 +1,37 @@
+use crate::auth::hash::Hash;
+
+use super::MetaUser;
 use super::UserStore;
-use super::{super::models::RegisterForm, MetaUser};
 use async_trait::async_trait;
 use deadpool_postgres::Client;
 use pasta6_core::{Error, Session, User};
-use tokio_postgres::Row;
+use tokio_postgres::{GenericClient, Row};
 
 const TABLE: &str = "p6_user";
 const SELECT_FIELDS: &str = "id, created_at, username, password, session";
 
-pub(crate) struct PostgresStore<'a> {
-    db: &'a Client,
+pub(crate) struct PostgresStore<'a, C>
+where
+    C: GenericClient,
+{
+    db: &'a C,
 }
 
-impl<'a> PostgresStore<'a> {
-    pub(crate) fn new(db: &'a Client) -> Self {
+impl<'a, C> PostgresStore<'a, C>
+where
+    C: GenericClient,
+{
+    pub(crate) fn new(db: &'a C) -> Self {
         Self { db }
     }
 }
 
 #[async_trait]
-impl UserStore for PostgresStore<'_> {
-    async fn create_user(&self, form: &RegisterForm) -> Result<MetaUser, Error> {
+impl<C> UserStore for PostgresStore<'_, C>
+where
+    C: GenericClient + Send + Sync,
+{
+    async fn create_user(&self, username: &str, password: &Hash) -> Result<MetaUser, Error> {
         // TODO: use a prepared statement.
         let query = format!(
             "INSERT INTO {} (username, password) VALUES ($1, $2) RETURNING *",
@@ -28,7 +39,7 @@ impl UserStore for PostgresStore<'_> {
         );
         let row = self
             .db
-            .query_one(query.as_str(), &[&form.username(), &form.password()])
+            .query_one(query.as_str(), &[&username, &password])
             .await
             .map_err(Error::DbQueryError)?;
         Ok(row_to_user(&row))
@@ -77,7 +88,10 @@ impl UserStore for PostgresStore<'_> {
 }
 
 #[async_trait]
-impl pasta6_core::UserStore for PostgresStore<'_> {
+impl<'a, C> pasta6_core::UserStore for PostgresStore<'a, C>
+where
+    C: GenericClient + Send + Sync + 'static,
+{
     type User = MetaUser;
 
     // TODO: we really only need the username here, so why fetch the whole user?

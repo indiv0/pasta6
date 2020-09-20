@@ -1,7 +1,7 @@
 .PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies release package deploy test
 
 watch_trigger:
-	cargo watch -i .trigger -x build -s 'touch .trigger'
+	cargo watch -i .trigger -x build -x "test --all" -s 'touch .trigger'
 
 watch_home:
 	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_home"

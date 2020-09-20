@@ -6,5 +6,6 @@ pub(crate) use store::{MetaUser, PostgresStore};
 
 mod db;
 mod filter;
+mod hash;
 mod models;
 mod store;

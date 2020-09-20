@@ -1,4 +1,4 @@
-use super::models::RegisterForm;
+use super::{hash::verify, hash::Hash};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use pasta6_core::{Error, Session, User};
@@ -11,7 +11,7 @@ pub(crate) struct MetaUser {
     id: i32,
     created_at: DateTime<Utc>,
     username: String,
-    password: String,
+    password: Hash,
     _session: Option<String>,
 }
 
@@ -20,7 +20,7 @@ impl MetaUser {
         id: i32,
         created_at: DateTime<Utc>,
         username: String,
-        password: String,
+        password: Hash,
         session: Option<String>,
     ) -> Self {
         Self {
@@ -49,7 +49,7 @@ impl User for MetaUser {
 
 #[async_trait]
 pub(crate) trait UserStore {
-    async fn create_user(&self, form: &RegisterForm) -> Result<MetaUser, Error>;
+    async fn create_user(&self, username: &str, hash: &Hash) -> Result<MetaUser, Error>;
 
     async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
     where
@@ -61,5 +61,5 @@ pub(crate) trait UserStore {
 }
 
 pub(crate) fn verify_password(user: &MetaUser, password: &str) -> bool {
-    user.password == password
+    verify(&user.password, password)
 }

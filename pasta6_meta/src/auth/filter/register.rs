@@ -1,12 +1,16 @@
 use super::{generate_random_session, set_session};
 use crate::{
-    auth::{db, models::RegisterForm},
+    auth::hash::hash,
+    auth::PostgresStore,
+    auth::{models::RegisterForm, store::UserStore},
     DOMAIN,
 };
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
+use pasta6_core::Error::DbQueryError;
 use pasta6_core::{BaseUser, TemplateContext, User};
-use warp::{http::header, hyper::Uri, redirect, reply::with_header};
+use tokio_postgres::Transaction;
+use warp::{http::header, hyper::Uri, redirect, reject::custom, reply::with_header};
 
 #[derive(Template)]
 #[template(path = "register.html")]
@@ -24,19 +28,33 @@ pub(crate) async fn get_register(
 
 pub(crate) async fn post_register(
     form: RegisterForm,
-    db: DbClient,
+    mut db: DbClient,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    let transaction = db
+        .transaction()
+        .await
+        .map_err(DbQueryError)
+        .map_err(|e| custom(e))?;
+    let store = PostgresStore::<Transaction>::new(&*transaction);
     // TODO: perform proper validation to ensure these aren't empty values and enforce limits
     // on them (e.g. username length).
     // TODO: perform the validation in middleware.
-    let user = db::create_user(&db, &form)
+    let user = store
+        .create_user(form.username(), &hash(form.password()))
         .await
-        .map_err(|e| warp::reject::custom(e))?;
+        .map_err(|e| custom(e))?;
 
     let session = generate_random_session();
-    db::set_session(&db, &user, &session)
+    store
+        .set_session(&user, &session)
         .await
-        .map_err(|e| warp::reject::custom(e))?;
+        .map_err(|e| custom(e))?;
+
+    transaction
+        .commit()
+        .await
+        .map_err(DbQueryError)
+        .map_err(|e| custom(e))?;
     // TODO: should I be using serde_json to serialize the cookie or something like percent
     // encoding?
     let session_cookie = set_session(&serde_json::to_string(&session).unwrap());

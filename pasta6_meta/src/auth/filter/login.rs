@@ -1,7 +1,6 @@
 use super::{generate_random_session, set_session};
 use crate::{
     auth::{
-        db,
         models::LoginForm,
         store::{verify_password, UserStore},
         PostgresStore,
@@ -11,6 +10,7 @@ use crate::{
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{BaseUser, TemplateContext, User};
+use tokio_postgres::Client;
 use warp::{http::header, hyper::Uri, redirect, reply::with_header};
 
 #[derive(Template)]
@@ -34,7 +34,7 @@ pub(crate) async fn post_login(
     // TODO: perform proper validation to ensure these aren't empty values and enforce limits
     // on them (e.g. username length).
     // TODO: perform the validation in middleware.
-    let store = PostgresStore::new(&db);
+    let store = PostgresStore::<Client>::new(&**db);
     let user = store
         .get_user_by_username(form.username())
         .await
@@ -54,7 +54,8 @@ pub(crate) async fn post_login(
     // TODO: redirect to the page they originally wanted to visit.
     let redirect_uri = Uri::from_static("/profile");
     let session = generate_random_session();
-    db::set_session(&db, &user, &session)
+    store
+        .set_session(&user, &session)
         .await
         .map_err(|e| warp::reject::custom(e))?;
     // TODO: should I be using serde_json to serialize the cookie or something like percent

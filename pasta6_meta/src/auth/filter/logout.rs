@@ -1,8 +1,10 @@
 use super::set_session;
-use crate::auth::db;
+use crate::auth::{store::UserStore, PostgresStore};
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::Session;
+use tokio_postgres::Client;
 use warp::http::header;
+use warp::reject::custom;
 use warp::{http::Uri, redirect, reply::with_header};
 
 pub(crate) async fn get_logout(
@@ -10,9 +12,8 @@ pub(crate) async fn get_logout(
     db: DbClient,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     if let Some(s) = session {
-        db::unset_session(&db, &s)
-            .await
-            .map_err(|e| warp::reject::custom(e))?;
+        let store = PostgresStore::<Client>::new(&**db);
+        store.unset_session(&s).await.map_err(|e| custom(e))?;
     }
 
     Ok(redirect(Uri::from_static("/")))

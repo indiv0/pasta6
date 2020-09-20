@@ -8,6 +8,7 @@ use pasta6_core::{
     CoreUserStore,
 };
 use std::net::TcpListener;
+use tokio_postgres::Client;
 use warp::{get, path::end, post, Filter};
 
 // TODO: make this configurable at runtime
@@ -29,7 +30,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
         // GET /
         end()
             .and(get())
-            .and(optional_user::<PostgresStore>(pool.clone()))
+            .and(optional_user::<PostgresStore<Client>>(pool.clone()))
             .and_then(index)
         // GET /health
         .or(warp::path("health")
@@ -56,7 +57,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
         // GET /profile
         .or(warp::path("profile")
             .and(get())
-            .and(optional_user::<PostgresStore>(pool.clone()))
+            .and(optional_user::<PostgresStore<Client>>(pool.clone()))
             .and_then(get_profile))
         // GET /logout
         .or(warp::path("logout")
