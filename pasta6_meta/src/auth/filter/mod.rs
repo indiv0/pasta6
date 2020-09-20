@@ -1,5 +1,5 @@
-use crate::DOMAIN;
-use pasta6_core::{Session, SESSION_COOKIE_NAME};
+use crate::CONFIG;
+use pasta6_core::{Config, Session, SESSION_COOKIE_NAME};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 mod login;
@@ -27,6 +27,8 @@ fn set_session(value: &str) -> String {
     assert!(SESSION_COOKIE_NAME.starts_with("__Secure-"));
     format!(
         "{}={}; Domain={}; Secure; HttpOnly; SameSite=Strict",
-        SESSION_COOKIE_NAME, value, DOMAIN
+        SESSION_COOKIE_NAME,
+        value,
+        CONFIG.domain()
     )
 }

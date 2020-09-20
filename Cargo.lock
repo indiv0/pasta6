@@ -1188,10 +1188,12 @@ dependencies = [
  "askama_warp",
  "better-panic",
  "deadpool-postgres",
+ "lazy_static",
  "pasta6_core",
  "reqwest",
  "tokio",
  "tokio-postgres",
+ "toml",
  "warp",
 ]
 
@@ -1206,6 +1208,7 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
+ "lazy_static",
  "pasta6_core",
  "rand 0.7.3",
  "reqwest",
@@ -1215,6 +1218,7 @@ dependencies = [
  "sodiumoxide",
  "tokio",
  "tokio-postgres",
+ "toml",
  "warp",
 ]
 
@@ -1229,6 +1233,7 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
+ "lazy_static",
  "pasta6_core",
  "rand 0.7.3",
  "reqwest",
@@ -1237,6 +1242,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-postgres",
+ "toml",
  "warp",
 ]
 

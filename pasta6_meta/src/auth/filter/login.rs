@@ -1,28 +1,25 @@
 use super::{generate_random_session, set_session};
-use crate::{
-    auth::{
-        models::LoginForm,
-        store::{verify_password, UserStore},
-        PostgresStore,
-    },
-    DOMAIN,
+use crate::auth::{
+    models::LoginForm,
+    store::{verify_password, UserStore},
+    PostgresStore,
 };
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{BaseUser, TemplateContext, User};
+use pasta6_core::{BaseUser, Config, CoreConfig, TemplateContext, User};
 use tokio_postgres::Client;
 use warp::{http::header, hyper::Uri, redirect, reply::with_header};
 
 #[derive(Template)]
 #[template(path = "login.html")]
-struct LoginTemplate {
-    ctx: TemplateContext<BaseUser>,
+struct LoginTemplate<'a> {
+    ctx: TemplateContext<'a, CoreConfig, BaseUser>,
 }
 
-pub(crate) async fn get_login() -> Result<impl warp::Reply, warp::Rejection> {
-    Ok(LoginTemplate {
-        ctx: TemplateContext::new(None, DOMAIN.to_owned()),
-    })
+pub(crate) async fn get_login(
+    ctx: TemplateContext<'static, CoreConfig, BaseUser>,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    Ok(LoginTemplate { ctx })
 }
 
 pub(crate) async fn post_login(

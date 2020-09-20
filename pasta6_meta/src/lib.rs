@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use auth::{
     get_login, get_logout, get_profile, get_register, post_login, post_register, PostgresStore,
 };
@@ -5,18 +8,20 @@ use deadpool_postgres::Pool;
 use filter::{handle_rejection, health, index};
 use pasta6_core::{
     form_body, get_db_connection, init_server2, optional_session, optional_user, with_db,
-    CoreUserStore,
+    CoreConfig, CoreUserStore, TemplateContext,
 };
-use std::net::TcpListener;
+use std::{fs, net::TcpListener};
 use tokio_postgres::Client;
 use warp::{get, path::end, post, Filter};
-
-// TODO: make this configurable at runtime
-pub(crate) const DOMAIN: &str = "p6.rs";
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
 mod filter;
+
+lazy_static! {
+    static ref CONFIG: CoreConfig =
+        toml::from_str(&fs::read_to_string("config.toml").unwrap()).unwrap();
+}
 
 pub async fn run(listener: TcpListener, pool: Pool) {
     let conn = get_db_connection(&pool)
@@ -31,6 +36,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
         end()
             .and(get())
             .and(optional_user::<PostgresStore<Client>>(pool.clone()))
+            .map(|u| TemplateContext::new(&*CONFIG, u))
             .and_then(index)
         // GET /health
         .or(warp::path("health")
@@ -68,6 +74,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
         // GET /login
         .or(warp::path("login")
             .and(get())
+            .map(|| TemplateContext::new(&*CONFIG, None))
             .and_then(get_login))
         // POST /login
         .or(warp::path("login")
@@ -83,5 +90,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
             .and_then(post_login))
         .recover(handle_rejection);
 
-    init_server2(listener, routes).await.expect("server error")
+    init_server2(&*CONFIG, listener, routes)
+        .await
+        .expect("server error")
 }

@@ -3,32 +3,51 @@ use crate::{
     User,
 };
 use deadpool_postgres::{Client, Pool};
+use serde::Deserialize;
 use warp::{any, reject, Filter, Rejection};
-pub struct TemplateContext<U>
-where
-    U: User,
-{
-    current_user: Option<U>,
+
+pub trait Config {
+    fn domain(&self) -> &str;
+}
+
+#[derive(Deserialize)]
+pub struct CoreConfig {
     domain: String,
 }
 
-impl<U> TemplateContext<U>
+impl Config for CoreConfig {
+    fn domain(&self) -> &str {
+        &self.domain
+    }
+}
+
+pub struct TemplateContext<'a, C, U>
 where
+    C: Config,
     U: User,
 {
-    pub fn new(current_user: Option<U>, domain: String) -> Self {
+    config: &'a C,
+    current_user: Option<U>,
+}
+
+impl<'a, C, U> TemplateContext<'a, C, U>
+where
+    C: Config,
+    U: User,
+{
+    pub fn new(config: &'a C, current_user: Option<U>) -> Self {
         Self {
+            config,
             current_user,
-            domain,
         }
+    }
+
+    pub fn config(&self) -> &impl Config {
+        self.config
     }
 
     pub fn current_user(&self) -> Option<&U> {
         self.current_user.as_ref()
-    }
-
-    pub fn domain(&self) -> &str {
-        &self.domain
     }
 }
 

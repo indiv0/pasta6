@@ -9,6 +9,8 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use warp::hyper::Server;
 use warp::{hyper, Filter, Reply};
 
+use crate::Config;
+
 pub fn bind() -> TcpListener {
     let mut listenfd = ListenFd::from_env();
     // if listenfd doesn't take a TcpListener (i.e. we're not running via the
@@ -69,7 +71,13 @@ where
     server.serve(make_svc).await.unwrap();
 }
 
-pub async fn init_server2<F>(listener: TcpListener, routes: F) -> Result<(), hyper::error::Error>
+// We require that the config is passed in to ensure that is loaded before the server starts,
+// as our config is lazy-loaded and would cause errors at request time if it was malformed.
+pub async fn init_server2<F>(
+    _config: &impl Config,
+    listener: TcpListener,
+    routes: F,
+) -> Result<(), hyper::error::Error>
 where
     F: Filter + Clone + Send + 'static,
     F::Extract: Reply,

@@ -19,6 +19,7 @@ better-panic = "0.2.0"
 bytes = "0.5.6"
 chrono = "0.4.13"
 deadpool-postgres = "0.5.6"
+lazy_static = "1.4.0"
 pasta6_core = { path = "../pasta6_core" }
 rand = "0.7.3"
 serde = { version = "1.0.115", features = ["derive"] }
@@ -27,6 +28,7 @@ serde_json = "1.0.57"
 sodiumoxide = "0.2.6"
 tokio = { version = "0.2.22", features = ["macros"] }
 tokio-postgres = { version = "0.5.5", features = ["with-chrono-0_4"] }
+toml = "0.5.6"
 warp = "0.2.4"
 
 [dev-dependencies]
