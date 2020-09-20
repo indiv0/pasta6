@@ -1,12 +1,14 @@
 use crate::filter::{health, index};
-use pasta6_core::{get_db_connection, optional_user, with_db, form_body, CoreUserStore, init_server2};
-use warp::{path::end, Filter, get, post, Rejection, body::content_length_limit};
-use warp::body::bytes;
-use filter::handle_rejection;
 use bytes::Bytes;
-use paste::{get_paste_api, create_paste_api, create_paste, get_paste};
-use std::net::TcpListener;
 use deadpool_postgres::Pool;
+use filter::handle_rejection;
+use pasta6_core::{
+    form_body, get_db_connection, init_server2, optional_user, with_db, CoreUserStore,
+};
+use paste::{create_paste, create_paste_api, get_paste, get_paste_api};
+use std::net::TcpListener;
+use warp::body::bytes;
+use warp::{body::content_length_limit, get, path::end, post, Filter, Rejection};
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod filter;

@@ -1,7 +1,7 @@
-use async_trait::async_trait;
 use super::models::RegisterForm;
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use pasta6_core::{Error, Session, User};
-use chrono::{Utc, DateTime};
 pub(crate) use postgres::PostgresStore;
 
 mod postgres;
@@ -52,7 +52,8 @@ pub(crate) trait UserStore {
     async fn create_user(&self, form: &RegisterForm) -> Result<MetaUser, Error>;
 
     async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
-        where U: User + Sync;
+    where
+        U: User + Sync;
 
     async fn unset_session(&self, session: &Session) -> Result<(), Error>;
 

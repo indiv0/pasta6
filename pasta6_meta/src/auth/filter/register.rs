@@ -1,14 +1,16 @@
+use super::{generate_random_session, set_session};
+use crate::{
+    auth::{db, models::RegisterForm},
+    DOMAIN,
+};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{User, TemplateContext, BaseUser};
-use warp::{redirect, hyper::Uri, http::header, reply::with_header};
-use crate::{DOMAIN, auth::{models::RegisterForm, db}};
-use super::{generate_random_session, set_session};
+use pasta6_core::{BaseUser, TemplateContext, User};
+use warp::{http::header, hyper::Uri, redirect, reply::with_header};
 
 #[derive(Template)]
 #[template(path = "register.html")]
-struct RegisterTemplate
-{
+struct RegisterTemplate {
     ctx: TemplateContext<BaseUser>,
 }
 
@@ -39,7 +41,5 @@ pub(crate) async fn post_register(
     // encoding?
     let session_cookie = set_session(&serde_json::to_string(&session).unwrap());
     let redirect_uri = Uri::from_static("/");
-    Ok(redirect(redirect_uri)).map(|reply| {
-        with_header(reply, header::SET_COOKIE, session_cookie)
-    })
+    Ok(redirect(redirect_uri)).map(|reply| with_header(reply, header::SET_COOKIE, session_cookie))
 }

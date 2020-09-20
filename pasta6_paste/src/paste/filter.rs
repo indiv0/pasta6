@@ -1,8 +1,11 @@
 use crate::paste::db;
-use crate::{DOMAIN, paste::models::{self, Paste, PasteCreateResponse, PasteForm}};
+use crate::{
+    paste::models::{self, Paste, PasteCreateResponse, PasteForm},
+    DOMAIN,
+};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{TemplateContext, User, BaseUser};
+use pasta6_core::{BaseUser, TemplateContext, User};
 use std::str::FromStr;
 use warp::http::Uri;
 
@@ -17,7 +20,10 @@ pub(crate) async fn create_paste_api(
     )))
 }
 
-pub(crate) async fn get_paste_api(id: i32, db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn get_paste_api(
+    id: i32,
+    db: DbClient,
+) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(models::paste_to_paste_get_response(
         db::get_paste(&db, id)
             .await

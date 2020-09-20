@@ -1,9 +1,9 @@
+use super::set_session;
+use crate::auth::db;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::Session;
-use warp::{redirect, http::Uri, reply::with_header};
 use warp::http::header;
-use crate::auth::db;
-use super::set_session;
+use warp::{http::Uri, redirect, reply::with_header};
 
 pub(crate) async fn get_logout(
     session: Option<Session>,

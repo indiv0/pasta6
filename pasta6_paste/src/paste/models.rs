@@ -62,4 +62,3 @@ type PasteGetResponse = Vec<u8>;
 pub(crate) fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
     paste.data
 }
-

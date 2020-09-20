@@ -1,5 +1,5 @@
-use super::store::{UserStore, PostgresStore, MetaUser};
 use super::models::RegisterForm;
+use super::store::{MetaUser, PostgresStore, UserStore};
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{Error, Session};
 
@@ -23,7 +23,11 @@ pub(crate) async fn create_user(db: &DbClient, form: &RegisterForm) -> Result<Me
     store.create_user(form).await
 }
 
-pub(crate) async fn set_session(db: &DbClient, user: &MetaUser, session: &Session) -> Result<(), Error> {
+pub(crate) async fn set_session(
+    db: &DbClient,
+    user: &MetaUser,
+    session: &Session,
+) -> Result<(), Error> {
     let store = PostgresStore::new(db);
     store.set_session(user, session).await
 }

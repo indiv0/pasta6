@@ -31,4 +31,3 @@ impl LoginForm {
         &self.password
     }
 }
-

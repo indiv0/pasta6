@@ -1,6 +1,6 @@
+use crate::DOMAIN;
 use pasta6_core::{Session, SESSION_COOKIE_NAME};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use crate::DOMAIN;
 
 mod login;
 mod logout;
@@ -9,8 +9,8 @@ mod register;
 
 pub(crate) use login::{get_login, post_login};
 pub(crate) use logout::get_logout;
-pub(crate) use register::{get_register, post_register};
 pub(crate) use profile::get_profile;
+pub(crate) use register::{get_register, post_register};
 
 const SESSION_ID_LENGTH: usize = 30;
 
@@ -25,5 +25,8 @@ fn generate_random_session() -> Session {
 
 fn set_session(value: &str) -> String {
     assert!(SESSION_COOKIE_NAME.starts_with("__Secure-"));
-    format!("{}={}; Domain={}; Secure; HttpOnly; SameSite=Strict", SESSION_COOKIE_NAME, value, DOMAIN)
+    format!(
+        "{}={}; Domain={}; Secure; HttpOnly; SameSite=Strict",
+        SESSION_COOKIE_NAME, value, DOMAIN
+    )
 }

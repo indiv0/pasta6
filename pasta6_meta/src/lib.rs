@@ -1,9 +1,14 @@
-use pasta6_core::{get_db_connection, optional_user, with_db, form_body, CoreUserStore, init_server2, optional_session};
-use warp::{path::end, Filter, get, post};
-use filter::{health, index, handle_rejection};
-use auth::{post_register, get_register, PostgresStore, get_profile, get_logout, get_login, post_login};
-use std::net::TcpListener;
+use auth::{
+    get_login, get_logout, get_profile, get_register, post_login, post_register, PostgresStore,
+};
 use deadpool_postgres::Pool;
+use filter::{handle_rejection, health, index};
+use pasta6_core::{
+    form_body, get_db_connection, init_server2, optional_session, optional_user, with_db,
+    CoreUserStore,
+};
+use std::net::TcpListener;
+use warp::{get, path::end, post, Filter};
 
 // TODO: make this configurable at runtime
 pub(crate) const DOMAIN: &str = "p6.rs";

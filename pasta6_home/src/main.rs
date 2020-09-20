@@ -1,4 +1,4 @@
-use pasta6_core::{bind, init_tracing, create_db_pool};
+use pasta6_core::{bind, create_db_pool, init_tracing};
 use pasta6_home::run;
 
 /// # Autoreload

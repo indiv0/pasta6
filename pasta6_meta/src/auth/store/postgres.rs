@@ -1,8 +1,8 @@
+use super::UserStore;
+use super::{super::models::RegisterForm, MetaUser};
 use async_trait::async_trait;
 use deadpool_postgres::Client;
 use pasta6_core::{Error, Session, User};
-use super::UserStore;
-use super::{MetaUser, super::models::RegisterForm};
 use tokio_postgres::Row;
 
 const TABLE: &str = "p6_user";
@@ -35,7 +35,8 @@ impl UserStore for PostgresStore<'_> {
     }
 
     async fn set_session<U>(&self, user: &U, session: &Session) -> Result<(), Error>
-        where U: User + Sync,
+    where
+        U: User + Sync,
     {
         let query = format!("UPDATE {} SET session = $1 WHERE id = $2", TABLE);
         let row_count = self
@@ -62,7 +63,10 @@ impl UserStore for PostgresStore<'_> {
     }
 
     async fn get_user_by_username(&self, username: &str) -> Result<Option<MetaUser>, Error> {
-        let query = format!("SELECT {} FROM {} WHERE username = $1", SELECT_FIELDS, TABLE);
+        let query = format!(
+            "SELECT {} FROM {} WHERE username = $1",
+            SELECT_FIELDS, TABLE
+        );
         let row = self
             .db
             .query_opt(query.as_str(), &[&username])
@@ -77,7 +81,10 @@ impl pasta6_core::UserStore for PostgresStore<'_> {
     type User = MetaUser;
 
     // TODO: we really only need the username here, so why fetch the whole user?
-    async fn get_user_by_session_id(db: &Client, session: &Session) -> Result<Option<MetaUser>, Error> {
+    async fn get_user_by_session_id(
+        db: &Client,
+        session: &Session,
+    ) -> Result<Option<MetaUser>, Error> {
         let query = format!("SELECT {} FROM {} WHERE session = $1", SELECT_FIELDS, TABLE);
         let row = db
             .query_opt(query.as_str(), &[&session.session_id()])

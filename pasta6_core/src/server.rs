@@ -1,9 +1,13 @@
-use std::{convert::Infallible, env, net::{TcpListener, Ipv4Addr}};
-use tracing_subscriber::fmt::format::FmtSpan;
-use warp::{Reply, Filter, hyper};
-use warp::{hyper::Server};
 use listenfd::ListenFd;
+use std::{
+    convert::Infallible,
+    env,
+    net::{Ipv4Addr, TcpListener},
+};
 use tracing::info;
+use tracing_subscriber::fmt::format::FmtSpan;
+use warp::hyper::Server;
+use warp::{hyper, Filter, Reply};
 
 pub fn bind() -> TcpListener {
     let mut listenfd = ListenFd::from_env();
@@ -13,8 +17,14 @@ pub fn bind() -> TcpListener {
         info!("initializing server with listenfd");
         l
     } else {
-        let host: Ipv4Addr = env::var("PASTA6_HOST").expect("PASTA6_HOST unset").parse().unwrap();
-        let port: u16 = env::var("PASTA6_PORT").expect("PASTA6_PORT unset").parse().unwrap();
+        let host: Ipv4Addr = env::var("PASTA6_HOST")
+            .expect("PASTA6_HOST unset")
+            .parse()
+            .unwrap();
+        let port: u16 = env::var("PASTA6_PORT")
+            .expect("PASTA6_PORT unset")
+            .parse()
+            .unwrap();
         let address = format!("{}:{}", host, port);
         info!("initializing server on {}", address);
         TcpListener::bind(address).expect("failed to bind")
@@ -22,8 +32,9 @@ pub fn bind() -> TcpListener {
 }
 
 pub async fn init_server<F>(routes: F)
-    where F: Filter + Clone + Send + 'static,
-          F::Extract: Reply,
+where
+    F: Filter + Clone + Send + 'static,
+    F::Extract: Reply,
 {
     // Wrap all the routes with a filter that creates a `tracing` span for
     // each request we receive, including data about the request.
@@ -59,8 +70,9 @@ pub async fn init_server<F>(routes: F)
 }
 
 pub async fn init_server2<F>(listener: TcpListener, routes: F) -> Result<(), hyper::error::Error>
-    where F: Filter + Clone + Send + 'static,
-          F::Extract: Reply,
+where
+    F: Filter + Clone + Send + 'static,
+    F::Extract: Reply,
 {
     // Wrap all the routes with a filter that creates a `tracing` span for
     // each request we receive, including data about the request.
@@ -85,7 +97,12 @@ pub async fn init_server2<F>(listener: TcpListener, routes: F) -> Result<(), hyp
 pub fn init_tracing(crate_name: &str) {
     // Filter traces based on the RUST_LOG env var, or, if it's not set,
     // default to show the output of the example.
-    let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| format!("pasta6_core=trace,{}=trace,tracing=info,warp=debug", crate_name));
+    let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| {
+        format!(
+            "pasta6_core=trace,{}=trace,tracing=info,warp=debug",
+            crate_name
+        )
+    });
 
     // Configure the default `tracing` subscriber.
     // The `fmt` subscriber from the `tracing-subscriber` crate logs `tracing`

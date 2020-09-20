@@ -1,9 +1,9 @@
 use crate::{with_db, Error, Error::DbQueryError};
 use async_trait::async_trait;
 use deadpool_postgres::{Client, Pool};
-use warp::{reject, Filter, Rejection};
-use tokio_postgres::Row;
 use std::convert::Infallible;
+use tokio_postgres::Row;
+use warp::{reject, Filter, Rejection};
 
 pub use session::Session;
 pub use user::{BaseUser, User};
@@ -37,7 +37,10 @@ impl UserStore for CoreUserStore {
         db: &Client,
         session: &Session,
     ) -> Result<Option<Self::User>, Error> {
-        let query = format!("SELECT {} FROM {} WHERE session = $1", USER_SELECT_FIELDS, USER_TABLE);
+        let query = format!(
+            "SELECT {} FROM {} WHERE session = $1",
+            USER_SELECT_FIELDS, USER_TABLE
+        );
         let row = db
             .query_opt(query.as_str(), &[&session.session_id()])
             .await
@@ -49,7 +52,8 @@ impl UserStore for CoreUserStore {
 pub fn optional_user<S>(
     pool: Pool,
 ) -> impl Filter<Extract = (Option<S::User>,), Error = Rejection> + Clone
-    where S: UserStore,
+where
+    S: UserStore,
 {
     optional_session()
         .and(with_db(pool))
@@ -65,8 +69,7 @@ pub fn optional_user<S>(
 }
 
 // TODO: only load the session if it's present in the DB
-pub fn optional_session(
-) -> impl Filter<Extract = (Option<Session>,), Error = Infallible> + Clone {
+pub fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = Infallible> + Clone {
     warp::filters::cookie::optional(SESSION_COOKIE_NAME).map(|maybe_cookie: Option<String>| {
         if let None = maybe_cookie {
             return None;

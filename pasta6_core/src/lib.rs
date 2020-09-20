@@ -1,12 +1,15 @@
-use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod, Pool, config::ConfigError};
+use deadpool_postgres::{config::ConfigError, Config, ManagerConfig, Pool, RecyclingMethod};
 use std::env;
 use tokio_postgres::NoTls;
 
-pub use auth::{UserStore, CoreUserStore, optional_user, optional_session, row_to_user, Session, SESSION_COOKIE_NAME, BaseUser, User};
+pub use auth::{
+    optional_session, optional_user, row_to_user, BaseUser, CoreUserStore, Session, User,
+    UserStore, SESSION_COOKIE_NAME,
+};
 pub use error::{Error, ErrorResponse};
 pub use filter::{get_db_connection, with_db, TemplateContext};
 pub use routes::form_body;
-pub use server::{init_server, init_server2, bind, init_tracing};
+pub use server::{bind, init_server, init_server2, init_tracing};
 
 mod auth;
 mod error;

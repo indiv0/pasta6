@@ -1,21 +1,23 @@
+use crate::DOMAIN;
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{Error, User, TemplateContext, ErrorResponse};
+use pasta6_core::{Error, ErrorResponse, TemplateContext, User};
 use std::convert::Infallible;
 use warp::http::StatusCode;
-use crate::DOMAIN;
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate<U>
-    where U: User + Send,
+where
+    U: User + Send,
 {
     ctx: TemplateContext<U>,
 }
 
 // TODO: only get a DB connection if the session is present.
 pub(crate) async fn index<U>(current_user: Option<U>) -> Result<impl warp::Reply, warp::Rejection>
-    where U: User + Send,
+where
+    U: User + Send,
 {
     Ok(IndexTemplate {
         ctx: TemplateContext::new(current_user, DOMAIN.to_owned()),

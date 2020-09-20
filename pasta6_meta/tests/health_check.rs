@@ -1,4 +1,4 @@
-use pasta6_core::{init_tracing, create_db_pool};
+use pasta6_core::{create_db_pool, init_tracing};
 use pasta6_meta::run;
 use std::net::TcpListener;
 
