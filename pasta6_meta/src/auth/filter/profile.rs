@@ -1,4 +1,4 @@
-use crate::{auth::MetaUser};
+use crate::auth::MetaUser;
 use askama_warp::Template;
 use pasta6_core::{Context, TemplateContext, User};
 

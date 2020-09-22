@@ -1,7 +1,7 @@
 use std::{env, fs};
 use toml::Value;
-use ConfigError::*;
 use tracing::trace;
+use ConfigError::*;
 
 #[derive(Debug)]
 pub enum ConfigError {
@@ -15,7 +15,9 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Self {
-        let config_path = env::current_dir().unwrap().join(env::var("PASTA6_CONFIG").unwrap_or("config.toml".to_owned()));
+        let config_path = env::current_dir()
+            .unwrap()
+            .join(env::var("PASTA6_CONFIG").unwrap_or("config.toml".to_owned()));
         trace!("Loading config file: {}", config_path.to_str().unwrap());
         Config {
             inner: fs::read_to_string(config_path)
@@ -114,8 +116,14 @@ mod tests {
         );
 
         assert_eq!(cfg.get_service_domain("home").unwrap(), "https://p6.rs");
-        assert_eq!(cfg.get_service_domain("meta").unwrap(), "https://meta.p6.rs");
-        assert_eq!(cfg.get_service_domain("paste").unwrap(), "https://paste.p6.rs");
+        assert_eq!(
+            cfg.get_service_domain("meta").unwrap(),
+            "https://meta.p6.rs"
+        );
+        assert_eq!(
+            cfg.get_service_domain("paste").unwrap(),
+            "https://paste.p6.rs"
+        );
 
         assert_eq!(
             cfg.get("services.home.database.dbname").unwrap(),

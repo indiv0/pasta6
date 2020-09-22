@@ -1202,6 +1202,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "toml",
+ "tracing",
  "warp",
 ]
 
@@ -1226,6 +1227,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "toml",
+ "tracing",
  "warp",
 ]
 
@@ -1249,6 +1251,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "toml",
+ "tracing",
  "warp",
 ]
 

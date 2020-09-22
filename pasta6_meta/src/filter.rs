@@ -2,6 +2,7 @@ use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{Context, Error, ErrorResponse, TemplateContext, User};
 use std::convert::Infallible;
+use tracing::error;
 use warp::http::StatusCode;
 
 #[derive(Template)]
@@ -39,18 +40,18 @@ pub(crate) async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::
         message = "Not found";
     } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
         // TODO: disable this log line outside of development
-        eprintln!("body deserialize error: {:?}", e);
+        error!("body deserialize error: {:?}", e);
         code = StatusCode::BAD_REQUEST;
         message = "Invalid body";
     } else if let Some(e) = err.find::<Error>() {
         match e {
             Error::DbQueryError(e) => {
-                eprintln!("could not execute request: {:?}", e);
+                error!("could not execute request: {:?}", e);
                 code = StatusCode::BAD_REQUEST;
                 message = "Could not execute request";
             }
             _ => {
-                eprintln!("unhandled application error: {:?}", err);
+                error!("unhandled application error: {:?}", err);
                 code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
                 message = "Internal server error";
             }
@@ -59,7 +60,7 @@ pub(crate) async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = "Method not allowed";
     } else {
-        eprintln!("unhandled error: {:?}", err);
+        error!("unhandled error: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "Internal server error";
     }

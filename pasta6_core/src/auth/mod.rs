@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use deadpool_postgres::{Client, Pool};
 use std::convert::Infallible;
 use tokio_postgres::Row;
+use tracing::error;
 use warp::{reject, Filter, Rejection};
 
 pub use session::Session;
@@ -76,7 +77,7 @@ pub fn optional_session() -> impl Filter<Extract = (Option<Session>,), Error = I
         }
 
         let maybe_session_id: Option<String> = serde_json::from_str(&maybe_cookie.unwrap())
-            .map_err(|e| eprintln!("failed to deserialize session cookie: {:?}", e))
+            .map_err(|e| error!("failed to deserialize session cookie: {:?}", e))
             .ok();
         if let None = maybe_session_id {
             return None;

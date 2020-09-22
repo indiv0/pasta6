@@ -1,6 +1,6 @@
 use deadpool_postgres::Pool;
 use filter::{handle_rejection, health, index};
-use pasta6_core::{get_db_connection, init_server2, optional_user, with_db, Config, CoreUserStore, CONFIG};
+use pasta6_core::{get_db_connection, init_server2, optional_user, with_db, CoreUserStore, CONFIG};
 use std::net::TcpListener;
 use warp::{get, path::end, Filter};
 

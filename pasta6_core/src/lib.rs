@@ -62,7 +62,12 @@ pub fn create_db_pool(site: &str) -> Result<Pool, ConfigError> {
             .unwrap()
             .to_owned(),
     );
-    trace!("Creating database pool: host={}, user={}, dbname={}", cfg.host.as_ref().unwrap(), cfg.user.as_ref().unwrap(), cfg.dbname.as_ref().unwrap());
+    trace!(
+        "Creating database pool: host={}, user={}, dbname={}",
+        cfg.host.as_ref().unwrap(),
+        cfg.user.as_ref().unwrap(),
+        cfg.dbname.as_ref().unwrap()
+    );
     cfg.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,
     });
