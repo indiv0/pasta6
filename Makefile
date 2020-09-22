@@ -1,7 +1,7 @@
 .PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies release package deploy test
 
 watch_trigger:
-	cargo watch -i .trigger -x build -x "test --all" -s 'touch .trigger'
+	cargo watch -i .trigger -x build -s "PASTA6_CONFIG=../config.toml cargo test --all" -s 'touch .trigger'
 
 watch_home:
 	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_home"
@@ -15,7 +15,9 @@ watch_paste:
 styles:
 	yarn run tailwindcss build styles.css -o static/styles.css
 
-dependencies:
+dependencies: nginx postgres
+
+nginx:
 	docker run -d --rm --name nginx --network host \
 		-v $(PWD)/static/styles.css:/usr/share/nginx/html/styles.css:ro \
 		-v $(PWD)/static/robots.txt:/usr/share/nginx/html/robots.txt:ro \
@@ -27,7 +29,14 @@ dependencies:
 		-v /etc/letsencrypt/live/uh.rs/privkey.pem:/etc/letsencrypt/live/uh.rs/privkey.pem:ro \
 		-v /etc/nginx/dhparam.pem:/etc/nginx/dhparam.pem:ro \
 		nginx:1.19.2
-	docker run -d --rm --name postgres -p 5432:5432 -e POSTGRES_USER=$(POSTGRES_USER) -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) -e POSTGRES_DB=$(POSTGRES_DB) postgres:12.3 postgres -c log_statement=all
+
+postgres:
+	docker run -d --rm --name postgres -p 5432:5432 \
+		-e POSTGRES_USER=$(POSTGRES_USER) \
+		-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+		-e POSTGRES_DBS=home.p6.rs,meta.p6.rs,paste.p6.rs \
+		-v $(PWD)/init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh \
+		postgres:12.3 postgres -c log_statement=all
 
 release:
 	mkdir -p deploy/pasta6

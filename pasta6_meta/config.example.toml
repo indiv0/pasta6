@@ -1,2 +1,24 @@
-# Domain p6.rs is being served at
-domain="uh.rs"
+[pasta6]
+# Name of the site. Required.
+site_name="pasta6"
+# Root domain under which the services are served. Required.
+domain="p6.rs"
+
+
+[services.meta]
+# Name of the service. Required.
+name="meta.p6.rs"
+# Domain meta.p6.rs is being served at. Required.
+domain="https://meta.p6.rs"
+
+# Database connection
+[services.meta.database]
+# Host to connect to. Treated as a hostname.
+# Multiple hosts can be specified, separated by commas. Each host will be tried in turn when connecting. Required.
+host="localhost"
+# Username to authenticate with. Required.
+user="meta.p6.rs"
+# Password to authenticate with. Required.
+password="meta.p6.rs"
+# Name of the database to connect to. Defaults to the username. Required.
+dbname="meta.p6.rs"

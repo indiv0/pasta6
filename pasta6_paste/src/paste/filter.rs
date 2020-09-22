@@ -1,11 +1,8 @@
 use crate::paste::db;
-use crate::{
-    paste::models::{self, Paste, PasteCreateResponse, PasteForm},
-    CONFIG,
-};
+use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{BaseUser, Config, CoreConfig, TemplateContext, User};
+use pasta6_core::{BaseUser, Context, TemplateContext, User};
 use std::str::FromStr;
 use warp::http::Uri;
 
@@ -46,8 +43,8 @@ pub(crate) async fn create_paste(
 
 #[derive(Template)]
 #[template(path = "paste.html")]
-struct PasteTemplate<'a> {
-    ctx: TemplateContext<'a, CoreConfig, BaseUser>,
+struct PasteTemplate {
+    ctx: TemplateContext<BaseUser>,
     paste: Paste,
 }
 
@@ -64,7 +61,7 @@ pub(crate) async fn get_paste(
         .await
         .map_err(|e| warp::reject::custom(e))?;
     Ok(PasteTemplate {
-        ctx: TemplateContext::new(&*CONFIG, current_user),
+        ctx: TemplateContext::new(current_user),
         paste,
     })
 }

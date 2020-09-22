@@ -3,26 +3,25 @@ use crate::{
     auth::hash::hash,
     auth::PostgresStore,
     auth::{models::RegisterForm, store::UserStore},
-    CONFIG,
 };
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
 use pasta6_core::{BaseUser, TemplateContext, User};
-use pasta6_core::{Config, CoreConfig, Error::DbQueryError};
+use pasta6_core::{Context, Error::DbQueryError};
 use tokio_postgres::Transaction;
 use warp::{http::header, hyper::Uri, redirect, reject::custom, reply::with_header};
 
 #[derive(Template)]
 #[template(path = "register.html")]
-struct RegisterTemplate<'a> {
-    ctx: TemplateContext<'a, CoreConfig, BaseUser>,
+struct RegisterTemplate {
+    ctx: TemplateContext<BaseUser>,
 }
 
 pub(crate) async fn get_register(
     current_user: Option<BaseUser>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(RegisterTemplate {
-        ctx: TemplateContext::new(&*CONFIG, current_user),
+        ctx: TemplateContext::new(current_user),
     })
 }
 

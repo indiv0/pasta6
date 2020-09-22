@@ -1,5 +1,4 @@
-use crate::CONFIG;
-use pasta6_core::{Config, Session, SESSION_COOKIE_NAME};
+use pasta6_core::{Session, CONFIG, SESSION_COOKIE_NAME};
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
 mod login;
@@ -29,6 +28,6 @@ fn set_session(value: &str) -> String {
         "{}={}; Domain={}; Secure; HttpOnly; SameSite=Strict",
         SESSION_COOKIE_NAME,
         value,
-        CONFIG.domain()
+        CONFIG.get("pasta6.domain").unwrap()
     )
 }

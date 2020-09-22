@@ -74,7 +74,7 @@ where
 // We require that the config is passed in to ensure that is loaded before the server starts,
 // as our config is lazy-loaded and would cause errors at request time if it was malformed.
 pub async fn init_server2<F>(
-    _config: &impl Config,
+    _config: &Config,
     listener: TcpListener,
     routes: F,
 ) -> Result<(), hyper::error::Error>

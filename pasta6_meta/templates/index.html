@@ -3,6 +3,6 @@
 {% block content %}
     <div
       class="flex flex-col h-screen justify-center items-center bg-gray-100">
-      <p>Welcome to <strong class="font-bold">meta.{{ ctx.config().domain() }}</strong>! This is the account management page for pasta6.</p>
+      <p>Welcome to <strong class="font-bold">{{ ctx.config().get("services.meta.name").unwrap() }}</strong>! This is the account management page for pasta6.</p>
     </div>
 {% endblock %}

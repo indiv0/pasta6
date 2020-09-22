@@ -2,6 +2,8 @@ use pasta6_core::{create_db_pool, init_tracing};
 use pasta6_paste::run;
 use std::net::TcpListener;
 
+const SITE: &str = "paste";
+
 struct TestApp {
     address: String,
 }
@@ -11,7 +13,7 @@ fn spawn_app() -> TestApp {
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
 
-    let pool = create_db_pool().expect("create db pool error");
+    let pool = create_db_pool(SITE).expect("create db pool error");
 
     let server = run(listener, pool);
     tokio::spawn(server);

@@ -1,6 +1,8 @@
 use pasta6_core::{bind, create_db_pool, init_tracing};
 use pasta6_meta::run;
 
+const SITE: &str = "meta";
+
 /// # Autoreload
 /// Install `systemfd` and `cargo-watch`:
 /// ```
@@ -22,7 +24,7 @@ async fn main_inner() -> Result<(), tokio_postgres::Error> {
     init_tracing("pasta6_meta");
 
     let listener = bind();
-    let pool = create_db_pool().expect("create db pool error");
+    let pool = create_db_pool(SITE).expect("create db pool error");
     run(listener, pool).await;
 
     Ok(())

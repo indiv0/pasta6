@@ -1,15 +1,12 @@
-#[macro_use]
-extern crate lazy_static;
-
 use crate::filter::{health, index};
 use bytes::Bytes;
 use deadpool_postgres::Pool;
 use filter::handle_rejection;
 use pasta6_core::{
-    form_body, get_db_connection, init_server2, optional_user, with_db, CoreConfig, CoreUserStore,
+    form_body, get_db_connection, init_server2, optional_user, with_db, CoreUserStore, CONFIG,
 };
 use paste::{create_paste, create_paste_api, get_paste, get_paste_api};
-use std::{fs, net::TcpListener};
+use std::net::TcpListener;
 use warp::body::bytes;
 use warp::{body::content_length_limit, get, path::end, post, Filter, Rejection};
 
@@ -18,11 +15,6 @@ mod filter;
 mod paste;
 
 const MAX_CONTENT_LENGTH: u64 = 1024 * 16; // 16KB
-
-lazy_static! {
-    static ref CONFIG: CoreConfig =
-        toml::from_str(&fs::read_to_string("config.toml").unwrap()).unwrap();
-}
 
 pub async fn run(listener: TcpListener, pool: Pool) {
     let conn = get_db_connection(&pool)
@@ -68,7 +60,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
             .and_then(get_paste))
         .recover(handle_rejection);
 
-    init_server2(&*CONFIG, listener, routes)
+    init_server2(&CONFIG, listener, routes)
         .await
         .expect("server error")
 }

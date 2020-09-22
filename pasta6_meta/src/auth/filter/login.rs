@@ -6,18 +6,18 @@ use crate::auth::{
 };
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{BaseUser, Config, CoreConfig, TemplateContext, User};
+use pasta6_core::{BaseUser, Context, TemplateContext, User};
 use tokio_postgres::Client;
 use warp::{http::header, hyper::Uri, redirect, reply::with_header};
 
 #[derive(Template)]
 #[template(path = "login.html")]
-struct LoginTemplate<'a> {
-    ctx: TemplateContext<'a, CoreConfig, BaseUser>,
+struct LoginTemplate {
+    ctx: TemplateContext<BaseUser>,
 }
 
 pub(crate) async fn get_login(
-    ctx: TemplateContext<'static, CoreConfig, BaseUser>,
+    ctx: TemplateContext<BaseUser>,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(LoginTemplate { ctx })
 }

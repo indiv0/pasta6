@@ -1,22 +1,20 @@
 use askama_warp::Template;
 use deadpool_postgres::Client as DbClient;
-use pasta6_core::{Config, CoreConfig, Error, ErrorResponse, TemplateContext, User};
+use pasta6_core::{Context, Error, ErrorResponse, TemplateContext, User};
 use std::convert::Infallible;
 use warp::http::StatusCode;
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate<'a, U>
+struct IndexTemplate<U>
 where
     U: User + Send,
 {
-    ctx: TemplateContext<'a, CoreConfig, U>,
+    ctx: TemplateContext<U>,
 }
 
 // TODO: only get a DB connection if the session is present.
-pub(crate) async fn index<U>(
-    ctx: TemplateContext<'static, CoreConfig, U>,
-) -> Result<impl warp::Reply, warp::Rejection>
+pub(crate) async fn index<U>(ctx: TemplateContext<U>) -> Result<impl warp::Reply, warp::Rejection>
 where
     U: User + Send,
 {
