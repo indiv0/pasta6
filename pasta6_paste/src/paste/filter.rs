@@ -1,65 +1,64 @@
 use crate::paste::db;
 use crate::paste::models::{self, Paste, PasteCreateResponse, PasteForm};
 use askama_warp::Template;
-use deadpool_postgres::Client as DbClient;
-use pasta6_core::{BaseUser, Context, TemplateContext, User};
+use bytes::Bytes;
+use deadpool_postgres::Client;
+use models::paste_to_paste_get_response;
+use pasta6_core::Error::DbQueryError;
+use pasta6_core::{Context, CoreUser, TemplateContext, User};
 use std::str::FromStr;
-use warp::http::Uri;
+use warp::redirect::redirect;
+use warp::{http::Uri, reject::custom, reply::json, Rejection, Reply};
 
-pub(crate) async fn create_paste_api(
-    body: bytes::Bytes,
-    db: DbClient,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    Ok(warp::reply::json(&PasteCreateResponse::of(
-        db::create_paste(&db, &body[..])
+pub(crate) async fn create_paste_api(body: Bytes, client: Client) -> Result<impl Reply, Rejection> {
+    Ok(json(&PasteCreateResponse::of(
+        db::create_paste(&client, &body[..])
             .await
-            .map_err(|e| warp::reject::custom(e))?,
+            .map_err(DbQueryError)
+            .map_err(|e| custom(e))?,
     )))
 }
 
-pub(crate) async fn get_paste_api(
-    id: i32,
-    db: DbClient,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    Ok(models::paste_to_paste_get_response(
-        db::get_paste(&db, id)
+pub(crate) async fn get_paste_api(id: i32, client: Client) -> Result<impl Reply, Rejection> {
+    Ok(paste_to_paste_get_response(
+        db::get_paste(&client, id)
             .await
-            .map_err(|e| warp::reject::custom(e))?,
+            .map_err(DbQueryError)
+            .map_err(|e| custom(e))?,
     ))
 }
 
-pub(crate) async fn create_paste(
-    body: PasteForm,
-    db: DbClient,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let paste = db::create_paste(&db, body.data())
+pub(crate) async fn create_paste(body: PasteForm, client: Client) -> Result<impl Reply, Rejection> {
+    let paste = db::create_paste(&client, body.data())
         .await
-        .map_err(|e| warp::reject::custom(e))?;
+        .map_err(DbQueryError)
+        .map_err(|e| custom(e))?;
     assert_eq!(paste.data().as_bytes(), body.data());
     let redirect_uri = Uri::from_str(&format!("/paste/{id}", id = paste.id())).unwrap();
     // TODO: 302 instead of 301 here
-    Ok(warp::redirect::redirect(redirect_uri))
+    Ok(redirect(redirect_uri))
 }
 
 #[derive(Template)]
 #[template(path = "paste.html")]
 struct PasteTemplate {
-    ctx: TemplateContext<BaseUser>,
+    ctx: TemplateContext<CoreUser>,
     paste: Paste,
 }
 
 pub(crate) async fn get_paste(
     id: i32,
-    db: DbClient,
+    client: Client,
     // TODO: we don't actually need the username for this endpoint until
     // _after_ we've done `db::get_paste` (that is, the ctx is necessary for
     // the response only). So perhaps we could optimize away the DB query by
     // only doing it afterwards?
-    current_user: Option<BaseUser>,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let paste = db::get_paste(&db, id)
+    current_user: Option<CoreUser>,
+) -> Result<impl Reply, Rejection> {
+    let paste = db::get_paste(&client, id)
         .await
-        .map_err(|e| warp::reject::custom(e))?;
+        .map_err(DbQueryError)
+        .map_err(|e| custom(e))?;
     Ok(PasteTemplate {
         ctx: TemplateContext::new(current_user),
         paste,

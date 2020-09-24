@@ -4,6 +4,7 @@ members = [
     "pasta6_home",
     "pasta6_meta",
     "pasta6_paste",
+    "pasta6_util",
 ]
 
 [profile.dev.package."*"]

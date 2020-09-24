@@ -1,4 +1,4 @@
-use pasta6_core::{bind, create_db_pool, init_tracing};
+use pasta6_core::{bind, create_db_pool, init_tracing, ServerConfig};
 use pasta6_paste::run;
 
 const SITE: &str = "paste";
@@ -23,9 +23,10 @@ async fn main_inner() -> Result<(), tokio_postgres::Error> {
     better_panic::install();
     init_tracing("pasta6_paste");
 
+    let config = ServerConfig::new();
     let listener = bind();
     let pool = create_db_pool(SITE).expect("create db pool error");
-    run(listener, pool).await;
+    run(config, listener, pool).await;
 
     Ok(())
 }

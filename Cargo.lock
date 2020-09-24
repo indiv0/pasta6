@@ -196,6 +196,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bronco"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "237a90b47ab8c09c3a619674686eb05580e02ecf96fb1662a29b2d319d2ebbdb"
+dependencies = [
+ "base64",
+ "byteorder",
+ "sodiumoxide",
+]
+
+[[package]]
 name = "buf_redux"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1176,12 +1187,15 @@ version = "0.1.0"
 dependencies = [
  "assert_matches",
  "async-trait",
+ "base64",
+ "bronco",
  "chrono",
  "deadpool-postgres",
  "lazy_static",
  "listenfd",
  "serde",
  "serde_json",
+ "sodiumoxide",
  "tokio-postgres",
  "toml",
  "tracing",
@@ -1218,7 +1232,6 @@ dependencies = [
  "chrono",
  "deadpool-postgres",
  "pasta6_core",
- "rand 0.7.3",
  "reqwest",
  "serde",
  "serde_derive",
@@ -1253,6 +1266,14 @@ dependencies = [
  "toml",
  "tracing",
  "warp",
+]
+
+[[package]]
+name = "pasta6_util"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "sodiumoxide",
 ]
 
 [[package]]

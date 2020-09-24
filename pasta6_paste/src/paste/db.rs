@@ -1,46 +1,65 @@
 use crate::paste::models::Paste;
-use deadpool_postgres::Client as DbClient;
-use pasta6_core::Error;
+use deadpool_postgres::Client;
 
-const TABLE: &str = "paste";
-const SELECT_FIELDS: &str = "id, created_at, data";
+macro_rules! paste_table {
+    () => {
+        "paste"
+    };
+}
 
-pub(crate) async fn init_db(client: &DbClient) -> Result<(), tokio_postgres::Error> {
-    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS paste
-(
-    id SERIAL PRIMARY KEY NOT NULL,
-    created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
-    data bytea
-)"#;
+pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error> {
+    const INIT_SQL: [&str; 2] = [
+        r#"
+        CREATE TABLE IF NOT EXISTS paste
+        (
+            id SERIAL PRIMARY KEY NOT NULL,
+            created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+            data bytea
+        )"#,
+        r#"
+        CREATE TABLE IF NOT EXISTS p6_user
+        (
+            id SERIAL PRIMARY KEY NOT NULL,
+            created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+            username TEXT UNIQUE NOT NULL CHECK(length(username) <= 15)
+        )
+        "#,
+    ];
 
-    let _rows = client.query(INIT_SQL, &[]).await?;
+    for query in &INIT_SQL {
+        let _rows = client.query(*query, &[]).await?;
+    }
 
     Ok(())
 }
 
-// TODO: does this belong here or in models?
+pub(crate) async fn create_paste(
+    client: &Client,
+    body: &[u8],
+) -> Result<Paste, tokio_postgres::Error> {
+    // TODO: use a prepared statement.
+    const QUERY: &str = concat!(
+        "INSERT INTO ",
+        paste_table!(),
+        " (data) VALUES ($1) RETURNING *"
+    );
+    let row = client.query_one(QUERY, &[&body]).await?;
+    Ok(row_to_paste(&row))
+}
+
+pub(crate) async fn get_paste(client: &Client, id: i32) -> Result<Paste, tokio_postgres::Error> {
+    const QUERY: &str = concat!(
+        "SELECT id, created_at, data FROM ",
+        paste_table!(),
+        " WHERE id = $1"
+    );
+    let row = client.query_one(QUERY, &[&id]).await?;
+    Ok(row_to_paste(&row))
+}
+
 fn row_to_paste(row: &tokio_postgres::row::Row) -> Paste {
     let id = row.get(0);
     let created_at = row.get(1);
     let data = row.get(2);
     Paste::new(id, created_at, data)
-}
-
-pub(crate) async fn create_paste(db: &DbClient, body: &[u8]) -> Result<Paste, Error> {
-    // TODO: use a prepared statement.
-    let query = format!("INSERT INTO {} (data) VALUES ($1) RETURNING *", TABLE);
-    let row = db
-        .query_one(query.as_str(), &[&body])
-        .await
-        .map_err(Error::DbQueryError)?;
-    Ok(row_to_paste(&row))
-}
-
-pub(crate) async fn get_paste(db: &DbClient, id: i32) -> Result<Paste, Error> {
-    let query = format!("SELECT {} FROM {} WHERE id=$1", SELECT_FIELDS, TABLE);
-    let row = db
-        .query_one(query.as_str(), &[&id])
-        .await
-        .map_err(Error::DbQueryError)?;
-    Ok(row_to_paste(&row))
 }

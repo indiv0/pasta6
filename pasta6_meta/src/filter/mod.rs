@@ -1,25 +1,52 @@
+mod login;
+mod logout;
+mod profile;
+mod register;
+
+use std::convert::Infallible;
+
 use askama_warp::Template;
 use deadpool_postgres::Client;
+pub(crate) use login::{get_login, post_login};
+pub(crate) use logout::get_logout;
 use pasta6_core::Error::DbQueryError;
-use pasta6_core::{Context, CoreUser, Error, ErrorResponse, TemplateContext, User};
-use std::convert::Infallible;
+use pasta6_core::{
+    Context, Error, ErrorResponse, TemplateContext, User, CONFIG, SESSION_COOKIE_NAME,
+};
+pub(crate) use profile::get_profile;
+pub(crate) use register::{get_register, post_register};
 use tracing::error;
 use warp::{
-    body::BodyDeserializeError, http::StatusCode, reject::custom, reject::MethodNotAllowed,
-    reply::json, reply::with_status, Rejection, Reply,
+    body::BodyDeserializeError, http::StatusCode, reject::MethodNotAllowed, reply::json,
+    reply::with_status,
 };
+use warp::{reject::custom, Rejection, Reply};
+
+fn set_session(value: &str) -> String {
+    assert!(SESSION_COOKIE_NAME.starts_with("__Secure-"));
+    format!(
+        "{}={}; Domain={}; Secure; HttpOnly; SameSite=Strict",
+        SESSION_COOKIE_NAME,
+        value,
+        CONFIG.get("pasta6.domain").unwrap()
+    )
+}
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate {
-    ctx: TemplateContext<CoreUser>,
+struct IndexTemplate<U>
+where
+    U: User + Send,
+{
+    ctx: TemplateContext<U>,
 }
 
 // TODO: only get a DB connection if the session is present.
-pub(crate) async fn index(current_user: Option<CoreUser>) -> Result<impl Reply, Rejection> {
-    Ok(IndexTemplate {
-        ctx: TemplateContext::new(current_user),
-    })
+pub(crate) async fn index<U>(ctx: TemplateContext<U>) -> Result<impl Reply, Rejection>
+where
+    U: User + Send,
+{
+    Ok(IndexTemplate { ctx })
 }
 
 pub(crate) async fn health(client: Client) -> Result<impl Reply, Rejection> {
@@ -47,7 +74,7 @@ pub(crate) async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infal
         message = "Invalid body";
     } else if let Some(e) = err.find::<Error>() {
         match e {
-            DbQueryError(e) => {
+            Error::DbQueryError(e) => {
                 error!("could not execute request: {:?}", e);
                 code = StatusCode::BAD_REQUEST;
                 message = "Could not execute request";

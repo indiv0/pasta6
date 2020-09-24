@@ -1,60 +1,64 @@
 use askama_warp::Template;
-use deadpool_postgres::Client as DbClient;
-use pasta6_core::{BaseUser, Context, Error, ErrorResponse, TemplateContext, User};
+use deadpool_postgres::Client;
+use pasta6_core::Error::DbQueryError;
+use pasta6_core::{Context, CoreUser, Error, ErrorResponse, TemplateContext, User};
 use std::convert::Infallible;
 use tracing::error;
-use warp::http::StatusCode;
+use warp::{
+    body::BodyDeserializeError, http::StatusCode, reject::custom, reject::MethodNotAllowed,
+    reply::json, reply::with_status, Rejection, Reply,
+};
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    ctx: TemplateContext<BaseUser>,
+    ctx: TemplateContext<CoreUser>,
 }
 
 // TODO: only get a DB connection if the session is present.
-pub(crate) async fn index(
-    current_user: Option<BaseUser>,
-) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn index(current_user: Option<CoreUser>) -> Result<impl Reply, Rejection> {
     Ok(IndexTemplate {
         ctx: TemplateContext::new(current_user),
     })
 }
 
-pub(crate) async fn health(db: DbClient) -> Result<impl warp::Reply, warp::Rejection> {
+pub(crate) async fn health(client: Client) -> Result<impl Reply, Rejection> {
     // Check if our connection to the DB is still OK.
-    db.query("SELECT 1", &[])
+    client
+        .query("SELECT 1", &[])
         .await
-        .map_err(|e| warp::reject::custom(Error::DbQueryError(e)))?;
+        .map_err(DbQueryError)
+        .map_err(|e| custom(e))?;
 
     Ok(StatusCode::OK)
 }
 
-pub(crate) async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
+pub(crate) async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
     let code;
     let message;
 
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
         message = "Not found";
-    } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
+    } else if let Some(e) = err.find::<BodyDeserializeError>() {
         // TODO: disable this log line outside of development
         error!("body deserialize error: {:?}", e);
         code = StatusCode::BAD_REQUEST;
         message = "Invalid body";
     } else if let Some(e) = err.find::<Error>() {
         match e {
-            Error::DbQueryError(e) => {
+            DbQueryError(e) => {
                 error!("could not execute request: {:?}", e);
                 code = StatusCode::BAD_REQUEST;
                 message = "Could not execute request";
             }
             _ => {
                 error!("unhandled application error: {:?}", err);
-                code = warp::http::StatusCode::INTERNAL_SERVER_ERROR;
+                code = StatusCode::INTERNAL_SERVER_ERROR;
                 message = "Internal server error";
             }
         }
-    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+    } else if let Some(_) = err.find::<MethodNotAllowed>() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = "Method not allowed";
     } else {
@@ -63,7 +67,7 @@ pub(crate) async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::
         message = "Internal server error";
     }
 
-    let json = warp::reply::json(&ErrorResponse::new(message.into()));
+    let json = json(&ErrorResponse::new(message.into()));
 
-    Ok(warp::reply::with_status(json, code))
+    Ok(with_status(json, code))
 }

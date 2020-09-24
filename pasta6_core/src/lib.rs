@@ -9,14 +9,12 @@ use deadpool_postgres::{
 };
 use tokio_postgres::NoTls;
 
-pub use auth::{
-    optional_session, optional_user, row_to_user, BaseUser, CoreUserStore, Session, User,
-    UserStore, SESSION_COOKIE_NAME,
-};
-pub use config::Config;
+pub use auth::{AuthProvider, CoreAuthProvider, CoreUser, CoreUserStore, Token, User, UserStore};
+pub use config::{Config, SecretKey, ServerConfig, CONFIG};
 pub use error::{Error, ErrorResponse};
-pub use filter::{get_db_connection, with_db, TemplateContext};
-pub use routes::form_body;
+pub use filter::{
+    form_body, get_db_connection, with_db, with_token, TemplateContext, SESSION_COOKIE_NAME,
+};
 pub use server::{bind, init_server, init_server2, init_tracing};
 use tracing::trace;
 
@@ -24,12 +22,8 @@ mod auth;
 mod config;
 mod error;
 mod filter;
-mod routes;
 mod server;
 
-lazy_static! {
-    pub static ref CONFIG: Config = Config::load();
-}
 pub trait Context {
     fn config(&self) -> &'static Config {
         &*CONFIG

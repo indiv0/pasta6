@@ -37,7 +37,6 @@ impl<'a> FromSql<'a> for Hash {
 }
 
 pub(crate) fn hash(password: &str) -> Hash {
-    sodiumoxide::init().unwrap();
     let hash = pwhash(password.as_bytes(), OPSLIMIT_MODERATE, MEMLIMIT_MODERATE).unwrap();
     // From: https://libsodium.gitbook.io/doc/password_hashing/default_phf#password-storage
     // > The output string is zero-terminated, includes only ASCII characters and can be safely
@@ -57,7 +56,6 @@ pub(crate) fn hash(password: &str) -> Hash {
 }
 
 pub(crate) fn verify(hash: &Hash, passwd: &str) -> bool {
-    sodiumoxide::init().unwrap();
     assert!(hash.0.len() <= 128);
     let padded_hash = pad_password_hash(&hash.0);
     match HashedPassword::from_slice(&padded_hash) {

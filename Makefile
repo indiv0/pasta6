@@ -34,9 +34,13 @@ postgres:
 	docker run -d --rm --name postgres -p 5432:5432 \
 		-e POSTGRES_USER=$(POSTGRES_USER) \
 		-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
+		-e POSTGRES_DB=$(POSTGRES_DB) \
 		-e POSTGRES_DBS=home.p6.rs,meta.p6.rs,paste.p6.rs \
 		-v $(PWD)/init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh \
 		postgres:12.3 postgres -c log_statement=all
+
+postgres-cli:
+	POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) docker exec -it postgres psql --user $(POSTGRES_USER)
 
 release:
 	mkdir -p deploy/pasta6

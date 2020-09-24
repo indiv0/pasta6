@@ -1,34 +1,58 @@
-use auth::{
-    get_login, get_logout, get_profile, get_register, post_login, post_register, PostgresStore,
+use auth::{MetaAuthProvider, MetaUser};
+use deadpool_postgres::{Client, Pool};
+use filter::{
+    get_login, get_logout, get_profile, get_register, handle_rejection, health, index, post_login,
+    post_register,
 };
-use deadpool_postgres::Pool;
-use filter::{handle_rejection, health, index};
 use pasta6_core::{
-    form_body, get_db_connection, init_server2, optional_session, optional_user, with_db,
-    CoreUserStore, TemplateContext, CONFIG,
+    form_body, get_db_connection, init_server2, with_db, with_token, AuthProvider, ServerConfig,
+    TemplateContext, Token, CONFIG,
 };
-use std::net::TcpListener;
-use tokio_postgres::Client;
+use std::{convert::Infallible, net::TcpListener};
+use tracing::error;
 use warp::{get, path::end, post, Filter};
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
 mod filter;
+mod hash;
 
-pub async fn run(listener: TcpListener, pool: Pool) {
+async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error> {
+    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS p6_user
+(
+    id SERIAL PRIMARY KEY NOT NULL,
+    created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+    username TEXT UNIQUE NOT NULL CHECK(length(username) <= 15),
+    password TEXT NOT NULL CHECK(length(password) <= 128)
+)"#;
+
+    let _rows = client.query(INIT_SQL, &[]).await?;
+
+    Ok(())
+}
+
+pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
     let conn = get_db_connection(&pool)
         .await
         .expect("get db connection error");
-    auth::init_db(&conn)
-        .await
-        .expect("initialize database error");
+    init_db(&conn).await.expect("initialize database error");
 
+    let secret_key = config.secret_key().clone();
+    let secret_key_1 = config.secret_key().clone();
     let routes =
         // GET /
         end()
             .and(get())
-            .and(optional_user::<PostgresStore<Client>>(pool.clone()))
-            .map(|u| TemplateContext::new(u))
+            .and(with_token(config.secret_key().clone(), config.ttl()))
+            .and(with_db(pool.clone()))
+            .and_then(move |maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
+                Ok::<_, Infallible>(match maybe_token {
+                    None => None,
+                    // FIXME: remove this unwrap
+                    Some(token) => MetaAuthProvider::get_user(&**client, &token).await.unwrap()
+                })
+            })
+            .map(|u: Option<MetaUser>| TemplateContext::new(u))
             .and_then(index)
         // GET /health
         .or(warp::path("health")
@@ -38,7 +62,15 @@ pub async fn run(listener: TcpListener, pool: Pool) {
         // GET /register
         .or(warp::path("register")
             .and(get())
-            .and(optional_user::<CoreUserStore>(pool.clone()))
+            .and(with_token(config.secret_key().clone(), config.ttl()))
+            .and(with_db(pool.clone()))
+            .and_then(move |maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
+                Ok::<_, Infallible>(match maybe_token {
+                    None => None,
+                    // FIXME: remove this unwrap
+                    Some(token) => MetaAuthProvider::get_user(&**client, &token).await.unwrap()
+                })
+            })
             .and_then(get_register))
         // POST /register
         .or(warp::path("register")
@@ -51,16 +83,26 @@ pub async fn run(listener: TcpListener, pool: Pool) {
             //  users to a 4xx page or display a proper error on the website in this scenario.
             .and(form_body())
             .and(with_db(pool.clone()))
+            .map(move |form, client| (form, client, secret_key.clone()))
+            .untuple_one()
             .and_then(post_register))
         // GET /profile
         .or(warp::path("profile")
             .and(get())
-            .and(optional_user::<PostgresStore<Client>>(pool.clone()))
+            .and(with_token(config.secret_key().clone(), config.ttl()))
+            .and(with_db(pool.clone()))
+            .and_then(move |maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
+                error!("maybe_token: {:?}", maybe_token);
+                Ok::<_, Infallible>(match maybe_token {
+                    None => None,
+                    // FIXME: remove this unwrap
+                    Some(token) => MetaAuthProvider::get_user(&**client, &token).await.unwrap()
+                })
+            })
             .and_then(get_profile))
         // GET /logout
         .or(warp::path("logout")
             .and(get())
-            .and(optional_session())
             .and(with_db(pool.clone()))
             .and_then(get_logout))
         // GET /login
@@ -79,6 +121,7 @@ pub async fn run(listener: TcpListener, pool: Pool) {
             //  users to a 4xx page or display a proper error on the website in this scenario.
             .and(form_body())
             .and(with_db(pool.clone()))
+            .and(warp::any().map(move || secret_key_1.clone()))
             .and_then(post_login))
         .recover(handle_rejection);
 

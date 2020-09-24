@@ -3,6 +3,12 @@
 site_name="pasta6"
 # Root domain under which the services are served. Required.
 domain="p6.rs"
+# 256-bit base64-encoded secret key used for encrypting tokens (shared between services). Required.
+# Generate with `cargo run --bin pasta6-generate-key`
+secret_key=""
+# TTL for authentication tokens. Required.
+# Tokens with a timestamp more than TTL seconds in the past are treated as expired.
+token_ttl=3600 # 1 hour
 
 
 [services.paste]

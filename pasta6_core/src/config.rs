@@ -1,7 +1,13 @@
+use base64::URL_SAFE;
+use std::convert::TryFrom;
 use std::{env, fs};
 use toml::Value;
 use tracing::trace;
-use ConfigError::*;
+use ConfigError::{NotFound, WrongType};
+
+lazy_static! {
+    pub static ref CONFIG: Config = Config::load();
+}
 
 #[derive(Debug)]
 pub enum ConfigError {
@@ -11,6 +17,40 @@ pub enum ConfigError {
 
 pub struct Config {
     inner: Value,
+}
+
+#[derive(Clone)]
+pub struct SecretKey(Vec<u8>);
+
+impl SecretKey {
+    pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+pub struct ServerConfig {
+    secret_key: SecretKey,
+    ttl: u32,
+}
+
+impl ServerConfig {
+    pub fn new() -> Self {
+        let secret_key = CONFIG.secret_key().unwrap();
+        let key = "pasta6.token_ttl";
+        let ttl: u32 = CONFIG.get_u32(key).unwrap();
+        // TODO: we shouldn't be initializing sodiumoxide inside a config constructor, but rather a constructor for the `Server`
+        sodiumoxide::init().unwrap();
+
+        Self { secret_key, ttl }
+    }
+
+    pub fn secret_key(&self) -> &SecretKey {
+        &self.secret_key
+    }
+
+    pub fn ttl(&self) -> u32 {
+        self.ttl
+    }
 }
 
 impl Config {
@@ -32,6 +72,25 @@ impl Config {
         self._get_nested(key)?
             .as_str()
             .ok_or_else(|| WrongType(key.to_owned()))
+    }
+
+    pub fn get_u32(&self, key: &str) -> Result<u32, ConfigError> {
+        trace!("Reading config key: {}", key);
+        let value = self
+            ._get_nested(key)?
+            .as_integer()
+            .ok_or_else(|| WrongType(key.to_owned()))?;
+        u32::try_from(value).map_err(|_| WrongType(key.to_owned()))
+    }
+
+    pub fn secret_key(&self) -> Result<SecretKey, ConfigError> {
+        let secret_key: &str = self.get("pasta6.secret_key")?;
+        assert_eq!(secret_key.len(), 44);
+        let secret_key = base64::decode_config(&secret_key, URL_SAFE)
+            .map_err(|_| WrongType("pasta6.secret_key".to_owned()))?;
+        const SECRET_KEY_LEN: usize = 32;
+        assert_eq!(secret_key.len(), SECRET_KEY_LEN);
+        Ok(SecretKey(secret_key))
     }
 
     pub fn get_network<'a, 'b>(

@@ -1,7 +1,5 @@
-use pasta6_core::{bind, create_db_pool, init_tracing};
-use pasta6_home::run;
-
-const SITE: &str = "home";
+use pasta6_core::{bind, create_db_pool, init_tracing, ServerConfig};
+use pasta6_home::{run, SITE};
 
 /// # Autoreload
 /// Install `systemfd` and `cargo-watch`:
@@ -23,9 +21,10 @@ async fn main_inner() -> Result<(), tokio_postgres::Error> {
     better_panic::install();
     init_tracing("pasta6_home");
 
+    let config = ServerConfig::new();
     let listener = bind();
     let pool = create_db_pool(SITE).expect("create db pool error");
-    run(listener, pool).await;
+    run(config, listener, pool).await;
 
     Ok(())
 }

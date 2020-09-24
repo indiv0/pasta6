@@ -1,13 +1,11 @@
 use self::Error::{DbPoolError, DbQueryError, SerdeJsonError};
+use serde::Serialize;
 use std::fmt::{Display, Formatter, Result};
 use warp::reject::Reject;
 
-pub use models::ErrorResponse;
-
-mod models;
-
 #[derive(Debug)]
 pub enum Error {
+    // TODO: remove the `Error` suffix from all the variants.
     SerdeJsonError(serde_json::error::Error),
     DbPoolError(deadpool_postgres::PoolError),
     DbQueryError(tokio_postgres::Error),
@@ -37,3 +35,14 @@ impl Display for Error {
 
 impl Reject for Error {}
 impl std::error::Error for Error {}
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    message: String,
+}
+
+impl ErrorResponse {
+    pub fn new(message: String) -> Self {
+        Self { message }
+    }
+}
