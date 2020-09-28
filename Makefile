@@ -1,4 +1,4 @@
-.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies release package deploy test
+.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test
 
 watch_trigger:
 	cargo watch -i .trigger -x build -s "PASTA6_CONFIG=../config.toml cargo test --all" -s 'touch .trigger'
