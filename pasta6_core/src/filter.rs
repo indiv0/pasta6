@@ -61,8 +61,8 @@ pub fn with_token(
     secret_key: SecretKey,
     ttl: u32,
 ) -> impl Filter<Extract = (Option<Token>,), Error = Infallible> + Clone {
-    any().and(cookie::optional(SESSION_COOKIE_NAME)).and_then(
-        move |maybe_cookie: Option<String>| {
+    cookie::optional(SESSION_COOKIE_NAME)
+        .and_then(move |maybe_cookie: Option<String>| {
             let secret_key = secret_key.clone();
             async move {
                 Ok(match maybe_cookie {
@@ -86,6 +86,5 @@ pub fn with_token(
                     None => None,
                 })
             }
-        },
-    )
+        })
 }
