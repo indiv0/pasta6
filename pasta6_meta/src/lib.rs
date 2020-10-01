@@ -10,7 +10,7 @@ use pasta6_core::{
 };
 use std::{convert::Infallible, net::TcpListener};
 use tracing::error;
-use warp::{get, path::end, post, Filter};
+use warp::{Filter, get, path::{path, end}, post};
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;
@@ -55,12 +55,14 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .map(|u: Option<MetaUser>| TemplateContext::new(u))
             .and_then(index)
         // GET /health
-        .or(warp::path("health")
+        .or(path("health")
+            .and(end())
             .and(get())
             .and(with_db(pool.clone()))
             .and_then(health))
         // GET /register
-        .or(warp::path("register")
+        .or(path("register")
+            .and(end())
             .and(get())
             .and(with_token(config.secret_key().clone(), config.ttl()))
             .and(with_db(pool.clone()))
@@ -73,7 +75,7 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             })
             .and_then(get_register))
         // POST /register
-        .or(warp::path("register")
+        .or(path("register")
             .and(post())
             // TODO: if we submit a malformed form (e.g. no `input` with `name="username"` then on the console we see:
             //
@@ -87,7 +89,8 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .untuple_one()
             .and_then(post_register))
         // GET /profile
-        .or(warp::path("profile")
+        .or(path("profile")
+            .and(end())
             .and(get())
             .and(with_token(config.secret_key().clone(), config.ttl()))
             .and(with_db(pool.clone()))
@@ -101,17 +104,20 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             })
             .and_then(get_profile))
         // GET /logout
-        .or(warp::path("logout")
+        .or(path("logout")
+            .and(end())
             .and(get())
             .and(with_db(pool.clone()))
             .and_then(get_logout))
         // GET /login
-        .or(warp::path("login")
+        .or(path("login")
+            .and(end())
             .and(get())
             .map(|| TemplateContext::new(None))
             .and_then(get_login))
         // POST /login
-        .or(warp::path("login")
+        .or(path("login")
+            .and(end())
             .and(post())
             // TODO: if we submit a malformed form (e.g. no `input` with `name="username"` then on the console we see:
             //

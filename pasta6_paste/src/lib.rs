@@ -57,6 +57,7 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .and_then(get_paste_api))
         // POST /paste
         .or(path("paste")
+            .and(end())
             .and(post())
             .and(form_body())
             .and(with_db(pool.clone()))

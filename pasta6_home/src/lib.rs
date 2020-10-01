@@ -52,6 +52,7 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .and_then(index)
         // GET /health
         .or(path("health")
+            .and(end())
             .and(get())
             .and(with_db(pool.clone()))
             .and_then(health))
