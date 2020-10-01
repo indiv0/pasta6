@@ -13,14 +13,14 @@ pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error
         CREATE TABLE IF NOT EXISTS paste
         (
             id SERIAL PRIMARY KEY NOT NULL,
-            created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
-            data bytea
+            created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+            data bytea NOT NULL
         )"#,
         r#"
         CREATE TABLE IF NOT EXISTS p6_user
         (
             id SERIAL PRIMARY KEY NOT NULL,
-            created_at timestamp with time zone DEFAULT (now() at time zone 'utc'),
+            created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
             username TEXT UNIQUE NOT NULL CHECK(length(username) <= 15)
         )
         "#,
