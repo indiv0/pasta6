@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
 
+use super::db::Hash;
+
 #[derive(Deserialize)]
 #[serde(transparent)]
 pub(crate) struct Form<T>(T);
@@ -20,14 +22,16 @@ impl PasteForm {
 pub(crate) struct Paste {
     id: i32,
     created_at: DateTime<Utc>,
+    hash: Hash,
     data: Vec<u8>,
 }
 
 impl Paste {
-    pub(crate) fn new(id: i32, created_at: DateTime<Utc>, data: Vec<u8>) -> Self {
+    pub(crate) fn new(id: i32, created_at: DateTime<Utc>, hash: Hash, data: Vec<u8>) -> Self {
         Self {
             id,
-            created_at: created_at,
+            created_at,
+            hash,
             data,
         }
     }
@@ -38,6 +42,10 @@ impl Paste {
 
     pub(crate) fn created_at(&self) -> &DateTime<Utc> {
         &self.created_at
+    }
+
+    pub(crate) fn hash(&self) -> &Hash {
+        &self.hash
     }
 
     pub(crate) fn data(&self) -> &str {

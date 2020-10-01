@@ -1251,6 +1251,7 @@ dependencies = [
  "askama",
  "askama_warp",
  "async-trait",
+ "base64",
  "better-panic",
  "bytes",
  "chrono",

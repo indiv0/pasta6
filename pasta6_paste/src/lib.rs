@@ -6,7 +6,7 @@ use pasta6_core::{
     form_body, get_db_connection, init_server2, with_db, with_token, AuthProvider,
     CoreAuthProvider, ServerConfig, Token, CONFIG,
 };
-use paste::{create_paste, create_paste_api, get_paste, get_paste_api};
+use paste::{Hash, create_paste, create_paste_api, get_paste, get_paste_api};
 use std::{convert::Infallible, net::TcpListener};
 use warp::{body::bytes, path};
 use warp::{body::content_length_limit, get, path::end, post, Filter, Rejection};
@@ -51,7 +51,7 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .and(with_db(pool.clone()))
             .and_then(create_paste_api))
         // GET /api/paste/{id}
-        .or(path!("api" / "paste" / i32)
+        .or(path!("api" / "paste" / Hash)
             .and(post())
             .and(with_db(pool.clone()))
             .and_then(get_paste_api))
@@ -63,12 +63,12 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .and(with_db(pool.clone()))
             .and_then(create_paste))
         // GET /paste/{id}
-        .or(path!("paste" / i32)
+        .or(path!("paste" / Hash)
             .and(get())
             .and(with_token(config.secret_key().clone(), config.ttl()))
             .and(with_db(pool.clone()))
-            .and_then(move |id: i32, maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
-                Ok::<_, Infallible>((id, match maybe_token {
+            .and_then(move |hash: Hash, maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
+                Ok::<_, Infallible>((hash, match maybe_token {
                     None => None,
                     // FIXME: remove this unwrap
                     Some(token) => CoreAuthProvider::get_user(&**client, &token).await.unwrap()
@@ -76,7 +76,7 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             })
             .untuple_one()
             .and(with_db(pool.clone()))
-            .map(|id: i32, maybe_user: Option<_>, client: deadpool_postgres::Client| (id, client, maybe_user))
+            .map(|hash: Hash, maybe_user: Option<_>, client: deadpool_postgres::Client| (hash, client, maybe_user))
             .untuple_one()
             .and_then(get_paste))
         .recover(handle_rejection);
