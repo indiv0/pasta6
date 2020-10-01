@@ -17,7 +17,7 @@ askama_warp = "0.10.0"
 better-panic = "0.2.0"
 deadpool-postgres = "0.5.6"
 pasta6_core = { path = "../pasta6_core" }
-tokio = { version = "0.2.22", features = ["macros"] }
+tokio = { version = "0.2.22", features = ["macros", "rt-threaded"] }
 tokio-postgres = { version = "0.5.5", features = ["with-chrono-0_4"] }
 toml = "0.5.6"
 tracing = "0.1.19"
