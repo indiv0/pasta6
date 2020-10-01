@@ -1,0 +1,17 @@
+*
+!Cargo.toml
+!Cargo.lock
+!pasta6_paste/Cargo.toml
+!pasta6_paste/src
+!pasta6_paste/templates/*.html
+!pasta6_meta/Cargo.toml
+!pasta6_meta/src
+!pasta6_meta/templates/*.html
+!pasta6_home/Cargo.toml
+!pasta6_home/src
+!pasta6_home/templates/*.html
+!pasta6_core/Cargo.toml
+!pasta6_core/src
+!pasta6_core/templates/*.html
+!pasta6_util/Cargo.toml
+!pasta6_util/src

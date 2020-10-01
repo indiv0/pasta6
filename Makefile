@@ -49,6 +49,7 @@ release:
 	docker cp dummy:/pasta6_home deploy/pasta6/pasta6_home
 	docker cp dummy:/pasta6_meta deploy/pasta6/pasta6_meta
 	docker cp dummy:/pasta6_paste deploy/pasta6/pasta6_paste
+	docker cp dummy:/pasta6-generate-key deploy/pasta6/pasta6-generate-key
 	docker rm dummy
 	NODE_ENV=production yarn run tailwindcss build styles.css -o static/styles.css
 
@@ -68,7 +69,7 @@ package:
 
 deploy:
 	scp deploy/pasta6.tar.gz pasta6:
-	ssh pasta6 -- "sudo -u pastaaaaaa "tar -C /home/pastaaaaaa -xzvf /home/ubuntu/pasta6.tar.gz" && rm /home/ubuntu/pasta6.tar.gz"
+	ssh pasta6 -- "sudo -u pasta6 "tar -C /home/pasta6 -xzvf /home/ubuntu/pasta6.tar.gz" && rm /home/ubuntu/pasta6.tar.gz"
 
 test:
 	cargo test
