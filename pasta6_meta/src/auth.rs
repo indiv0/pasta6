@@ -7,7 +7,7 @@ use crate::hash::{verify, Hash};
 
 macro_rules! user_table {
     () => {
-        "p6_user"
+        "\"user\""
     };
 }
 

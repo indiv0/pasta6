@@ -17,7 +17,7 @@ pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error
             data bytea NOT NULL
         )"#,
         r#"
-        CREATE TABLE IF NOT EXISTS p6_user
+        CREATE TABLE IF NOT EXISTS "user"
         (
             id SERIAL PRIMARY KEY NOT NULL,
             created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),

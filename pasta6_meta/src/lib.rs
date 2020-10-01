@@ -18,7 +18,7 @@ mod filter;
 mod hash;
 
 async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error> {
-    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS p6_user
+    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS "user"
 (
     id SERIAL PRIMARY KEY NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),

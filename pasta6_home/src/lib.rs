@@ -14,10 +14,9 @@ pub const SITE: &str = "home";
 
 // TODO: add an updated_at field for all tables
 // TODO: ensure both created_at and updated_at are non-null
-// TODO: rename `p6_user` -> `user` for every service
 // FIXME: we don't actually need the session column for this microservice
 async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error> {
-    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS p6_user
+    const INIT_SQL: &str = r#"CREATE TABLE IF NOT EXISTS "user"
 (
     id SERIAL PRIMARY KEY NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),

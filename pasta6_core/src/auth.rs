@@ -4,10 +4,10 @@ use bronco::EncodeError;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{GenericClient, Row};
 
-// We use the table `p6_user` because `user` is a reserved keyword in postgres.
+// We quote the table name `user` because `user` is a reserved keyword in postgres.
 macro_rules! user_table {
     () => {
-        "p6_user"
+        "\"user\""
     };
 }
 
