@@ -36,7 +36,7 @@ impl Paste {
         }
     }
 
-    pub(crate) fn id(&self) -> &i32 {
+    pub(crate) fn _id(&self) -> &i32 {
         &self.id
     }
 

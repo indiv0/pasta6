@@ -95,6 +95,12 @@ impl Hash {
         Self(encoded)
     }
 
+    /// Returns a short form representation of this hash. This should be used for
+    /// display purposes only, and not for unique identification.
+    pub(crate) fn short_code(&self) -> &str {
+        &self.0[0..6]
+    }
+
     fn decoded(&self) -> Vec<u8> {
         decode_config(&self.0, URL_SAFE_NO_PAD).unwrap()
     }
