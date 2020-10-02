@@ -3,6 +3,7 @@
 {% block content %}
     <div
       class="flex flex-col h-screen justify-center items-center bg-gray-100">
+      {% if ctx.current_user().is_some() -%}
       <form
         action="/paste"
         method="POST"
@@ -17,5 +18,9 @@
           Upload
         </button>
       </form>
+      {% else %}
+      <p>Welcome to <strong class="font-bold">{{ ctx.config().get("services.paste.name").unwrap() }}</strong>! This is a text storage site provided as part of the pasta6 network of services.</p>
+      <p>Please <a href="{{ ctx.config().get_service_domain("meta").unwrap() }}/register" class="text-blue-600 hover:underline transition ease-in-out duration-150">register</a> or <a href="{{ ctx.config().get_service_domain("meta").unwrap() }}/login" class="text-blue-600 hover:underline transition ease-in-out duration-150">login</a> to create a paste.</p>
+      {% endif %}
     </div>
 {% endblock %}
