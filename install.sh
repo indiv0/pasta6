@@ -10,7 +10,7 @@ cp nginx/certs.conf /etc/nginx/snippets/certs.conf
 cp nginx/options-ssl-nginx.conf /etc/nginx/snippets/options-ssl-nginx.conf
 cp nginx/default.conf /etc/nginx/sites-available/p6.rs
 ln -sf /etc/nginx/sites-available/p6.rs /etc/nginx/sites-enabled/p6.rs
-sudo rm /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/default
 # static files
 mkdir -p /srv/www/p6.rs
 cp static/styles.css static/robots.txt /srv/www/p6.rs
