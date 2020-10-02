@@ -1253,7 +1253,6 @@ dependencies = [
  "async-trait",
  "base64",
  "better-panic",
- "bytes",
  "chrono",
  "deadpool-postgres",
  "pasta6_core",

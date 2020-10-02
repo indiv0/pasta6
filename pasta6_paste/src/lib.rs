@@ -1,21 +1,17 @@
 use crate::filter::{health, index};
-use bytes::Bytes;
 use deadpool_postgres::Pool;
 use filter::handle_rejection;
 use pasta6_core::{
     form_body, get_db_connection, init_server2, with_db, with_token, AuthProvider,
     CoreAuthProvider, ServerConfig, Token, CONFIG,
 };
-use paste::{Hash, create_paste, create_paste_api, get_paste, get_paste_api};
+use paste::{Hash, create_paste, get_paste};
 use std::{convert::Infallible, net::TcpListener};
-use warp::{body::bytes, path};
-use warp::{body::content_length_limit, get, path::end, post, Filter, Rejection};
+use warp::{get, path, path::end, post, Filter};
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod filter;
 mod paste;
-
-const MAX_CONTENT_LENGTH: u64 = 1024 * 16; // 16KB
 
 pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
     let conn = get_db_connection(&pool)
@@ -44,17 +40,6 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
             .and(get())
             .and(with_db(pool.clone()))
             .and_then(health))
-        // GET /api/paste
-        .or(path!("api" / "paste")
-            .and(get())
-            .and(bytes_body())
-            .and(with_db(pool.clone()))
-            .and_then(create_paste_api))
-        // GET /api/paste/{id}
-        .or(path!("api" / "paste" / Hash)
-            .and(post())
-            .and(with_db(pool.clone()))
-            .and_then(get_paste_api))
         // POST /paste
         .or(path("paste")
             .and(end())
@@ -84,8 +69,4 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
     init_server2(&CONFIG, listener, routes)
         .await
         .expect("server error")
-}
-
-fn bytes_body() -> impl Filter<Extract = (Bytes,), Error = Rejection> + Clone {
-    content_length_limit(MAX_CONTENT_LENGTH).and(bytes())
 }

@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde_derive::{Deserialize, Serialize};
+use serde_derive::Deserialize;
 
 use super::db::Hash;
 
@@ -51,22 +51,4 @@ impl Paste {
     pub(crate) fn data(&self) -> &str {
         &std::str::from_utf8(&self.data).unwrap()
     }
-}
-
-#[derive(Serialize)]
-pub(crate) struct PasteCreateResponse {
-    id: i32,
-}
-
-impl PasteCreateResponse {
-    // TODO: should this be implemented with `Into` or `From`?
-    pub(crate) fn of(paste: Paste) -> Self {
-        Self { id: paste.id }
-    }
-}
-
-type PasteGetResponse = Vec<u8>;
-
-pub(crate) fn paste_to_paste_get_response(paste: Paste) -> PasteGetResponse {
-    paste.data
 }
