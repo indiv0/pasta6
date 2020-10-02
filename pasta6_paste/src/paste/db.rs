@@ -18,7 +18,8 @@ pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error
             id SERIAL PRIMARY KEY NOT NULL,
             created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
             hash bytea UNIQUE NOT NULL CHECK(length(hash) = 20),
-            data bytea NOT NULL
+            data bytea NOT NULL,
+            user_id int REFERENCES "user" NOT NULL
         )"#,
         r#"
         CREATE TABLE IF NOT EXISTS "user"
@@ -45,20 +46,21 @@ pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error
 pub(crate) async fn create_paste(
     client: &Client,
     body: &[u8],
+    user_id: i32,
 ) -> Result<Paste, tokio_postgres::Error> {
     const QUERY: &str = concat!(
         "INSERT INTO ",
         paste_table!(),
-        " (data, hash) VALUES ($1, $2) RETURNING *"
+        " (data, hash, user_id) VALUES ($1, $2, $3) RETURNING *"
     );
     let hash = Hash::new();
-    let row = client.query_one(QUERY, &[&body, &hash.decoded()]).await?;
+    let row = client.query_one(QUERY, &[&body, &hash.decoded(), &user_id]).await?;
     Ok(row_to_paste(&row))
 }
 
 pub(crate) async fn get_paste(client: &Client, hash: Hash) -> Result<Paste, tokio_postgres::Error> {
     const QUERY: &str = concat!(
-        "SELECT id, created_at, hash, data FROM ",
+        "SELECT id, created_at, hash, data, user_id FROM ",
         paste_table!(),
         " WHERE hash = $1"
     );
@@ -70,8 +72,9 @@ fn row_to_paste(row: &tokio_postgres::row::Row) -> Paste {
     let id = row.get(0);
     let created_at = row.get(1);
     let hash: Hash = row.get::<_, &[u8]>(2).try_into().expect("could not parse vec to hash");
-    let data = row.get(3);
-    Paste::new(id, created_at, hash, data)
+    let user_id = row.get(3);
+    let data = row.get(4);
+    Paste::new(id, created_at, hash, user_id, data)
 }
 
 /// A URL safe base64 encoded representation of a 160-bit random identifier.

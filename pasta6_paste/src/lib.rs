@@ -1,10 +1,7 @@
 use crate::filter::{health, index};
 use deadpool_postgres::Pool;
 use filter::handle_rejection;
-use pasta6_core::{
-    form_body, get_db_connection, init_server2, with_db, with_token, AuthProvider,
-    CoreAuthProvider, ServerConfig, Token, CONFIG,
-};
+use pasta6_core::{AuthProvider, CONFIG, CoreAuthProvider, CoreUser, ServerConfig, Token, form_body, get_db_connection, init_server2, with_db, with_token};
 use paste::{Hash, create_paste, get_paste};
 use std::{convert::Infallible, net::TcpListener};
 use warp::{get, path, path::end, post, Filter};
@@ -44,6 +41,15 @@ pub async fn run(config: ServerConfig, listener: TcpListener, pool: Pool) {
         .or(path("paste")
             .and(end())
             .and(post())
+            .and(with_token(config.secret_key().clone(), config.ttl()))
+            .and(with_db(pool.clone()))
+            .and_then(move |maybe_token: Option<Token>, client: deadpool_postgres::Client| async move {
+                Ok::<Option<CoreUser>, Infallible>(match maybe_token {
+                    None => None,
+                    // FIXME: remove this unwrap
+                    Some(token) => CoreAuthProvider::get_user(&**client, &token).await.unwrap()
+                })
+            })
             .and(form_body())
             .and(with_db(pool.clone()))
             .and_then(create_paste))

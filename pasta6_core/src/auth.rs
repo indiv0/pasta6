@@ -13,12 +13,17 @@ macro_rules! user_table {
 
 #[derive(Debug)]
 pub struct CoreUser {
+    id: i32,
     username: String,
 }
 
 impl CoreUser {
-    pub fn new(username: String) -> Self {
-        Self { username }
+    pub fn new(id: i32, username: String) -> Self {
+        Self { id, username }
+    }
+
+    pub fn id(&self) -> i32 {
+        self.id
     }
 }
 
@@ -81,7 +86,7 @@ impl CoreUserStore {
             " (username) VALUES ($1) RETURNING *"
         );
         let row = client.query_one(QUERY, &[&username]).await?;
-        Ok(CoreUser::new(row.get(2)))
+        Ok(CoreUser::new(row.get(0), row.get(2)))
     }
 }
 
@@ -97,7 +102,7 @@ impl UserStore for CoreUserStore {
         C: GenericClient + Send + Sync + 'static,
     {
         const QUERY: &str = concat!(
-            "SELECT username FROM ",
+            "SELECT id, username FROM ",
             user_table!(),
             " WHERE username = $1"
         );
@@ -147,6 +152,7 @@ impl AuthProvider<CoreUserStore> for CoreAuthProvider {
 }
 
 fn row_to_user(row: &Row) -> CoreUser {
-    let username = row.get(0);
-    CoreUser::new(username)
+    let id = row.get(0);
+    let username = row.get(1);
+    CoreUser::new(id, username)
 }
