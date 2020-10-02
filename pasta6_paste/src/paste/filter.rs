@@ -1,21 +1,33 @@
 use crate::paste::db;
 use crate::paste::models::{Paste, PasteForm};
 use askama_warp::Template;
-use deadpool_postgres::Client;
 use db::Hash;
-use pasta6_core::{CONFIG, Error::DbQueryError};
+use deadpool_postgres::Client;
 use pasta6_core::{Context, CoreUser, TemplateContext, User};
+use pasta6_core::{Error::DbQueryError, CONFIG};
 use std::str::FromStr;
 use warp::redirect::redirect;
 use warp::{http::Uri, reject::custom, Rejection, Reply};
 
-pub(crate) async fn create_paste(maybe_user: Option<CoreUser>, body: PasteForm, client: Client) -> Result<impl Reply, Rejection> {
+pub(crate) async fn create_paste(
+    maybe_user: Option<CoreUser>,
+    body: PasteForm,
+    client: Client,
+) -> Result<impl Reply, Rejection> {
     let user = match maybe_user {
         Some(user) => user,
         // TODO: add a "register" button to redirect people to the registration page from the login page,
         //  in case they don't already have an account.
         // TODO: add a return_to parameter to this request so that the login page can bring us back to the paste page.
-        None => return Ok(redirect(Uri::from_str(&format!("{}/login", CONFIG.get_service_domain("meta").unwrap())).unwrap())),
+        None => {
+            return Ok(redirect(
+                Uri::from_str(&format!(
+                    "{}/login",
+                    CONFIG.get_service_domain("meta").unwrap()
+                ))
+                .unwrap(),
+            ))
+        }
     };
 
     let paste = db::create_paste(&client, body.data(), user.id())

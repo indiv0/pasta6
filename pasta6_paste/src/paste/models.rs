@@ -28,7 +28,13 @@ pub(crate) struct Paste {
 }
 
 impl Paste {
-    pub(crate) fn new(id: i32, created_at: DateTime<Utc>, hash: Hash, data: Vec<u8>, user_id: i32) -> Self {
+    pub(crate) fn new(
+        id: i32,
+        created_at: DateTime<Utc>,
+        hash: Hash,
+        data: Vec<u8>,
+        user_id: i32,
+    ) -> Self {
         Self {
             id,
             created_at,

@@ -10,7 +10,11 @@ use pasta6_core::{
 };
 use std::{convert::Infallible, net::TcpListener};
 use tracing::error;
-use warp::{Filter, get, path::{path, end}, post};
+use warp::{
+    get,
+    path::{end, path},
+    post, Filter,
+};
 
 // TODO: if the database restarts, we should either reconnect or restart as well.
 mod auth;

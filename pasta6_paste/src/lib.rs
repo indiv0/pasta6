@@ -1,8 +1,11 @@
 use crate::filter::{health, index};
 use deadpool_postgres::Pool;
 use filter::handle_rejection;
-use pasta6_core::{AuthProvider, CONFIG, CoreAuthProvider, CoreUser, ServerConfig, Token, form_body, get_db_connection, init_server2, with_db, with_token};
-use paste::{Hash, create_paste, get_paste};
+use pasta6_core::{
+    form_body, get_db_connection, init_server2, with_db, with_token, AuthProvider,
+    CoreAuthProvider, CoreUser, ServerConfig, Token, CONFIG,
+};
+use paste::{create_paste, get_paste, Hash};
 use std::{convert::Infallible, net::TcpListener};
 use warp::{get, path, path::end, post, Filter};
 

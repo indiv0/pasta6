@@ -1,8 +1,10 @@
 use crate::paste::models::Paste;
+use base64::{decode_config, encode_config, URL_SAFE_NO_PAD};
 use deadpool_postgres::Client;
-use base64::{URL_SAFE_NO_PAD, decode_config, encode_config};
 use rand::{thread_rng, Rng};
-use std::{convert::TryFrom, convert::TryInto, error::Error, fmt::Debug, fmt::Display, str::FromStr};
+use std::{
+    convert::TryFrom, convert::TryInto, error::Error, fmt::Debug, fmt::Display, str::FromStr,
+};
 
 macro_rules! paste_table {
     () => {
@@ -54,7 +56,9 @@ pub(crate) async fn create_paste(
         " (data, hash, user_id) VALUES ($1, $2, $3) RETURNING *"
     );
     let hash = Hash::new();
-    let row = client.query_one(QUERY, &[&body, &hash.decoded(), &user_id]).await?;
+    let row = client
+        .query_one(QUERY, &[&body, &hash.decoded(), &user_id])
+        .await?;
     Ok(row_to_paste(&row))
 }
 
@@ -71,7 +75,10 @@ pub(crate) async fn get_paste(client: &Client, hash: Hash) -> Result<Paste, toki
 fn row_to_paste(row: &tokio_postgres::row::Row) -> Paste {
     let id = row.get(0);
     let created_at = row.get(1);
-    let hash: Hash = row.get::<_, &[u8]>(2).try_into().expect("could not parse vec to hash");
+    let hash: Hash = row
+        .get::<_, &[u8]>(2)
+        .try_into()
+        .expect("could not parse vec to hash");
     let user_id = row.get(3);
     let data = row.get(4);
     Paste::new(id, created_at, hash, user_id, data)
