@@ -1,4 +1,4 @@
-.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test
+.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test clean
 
 watch_trigger:
 	cargo watch -i .trigger -x build -s "PASTA6_CONFIG=../config.toml cargo test --all" -s 'touch .trigger'
@@ -82,3 +82,14 @@ deploy:
 
 test:
 	cargo test
+
+clean:
+	rm -f ./*.events ./*.string_data ./*.string_index ./chrome_profiler.json ./rustc.svg
+	rm -f ./perf.data ./perf.data.old ./flamegraph_*.svg
+	rm -rf ./node_modules
+	rm -rf ./deploy
+	rm -f ./static/styles.css
+	rm -f ./.trigger
+	cargo clean
+	docker rm -f postgres
+	docker rm -f nginx
