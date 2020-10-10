@@ -15,6 +15,14 @@ macro_rules! paste_table {
 pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error> {
     const INIT_SQL: [&str; 2] = [
         r#"
+        CREATE TABLE IF NOT EXISTS "user"
+        (
+            id SERIAL PRIMARY KEY NOT NULL,
+            created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
+            username TEXT UNIQUE NOT NULL CHECK(length(username) <= 15)
+        )
+        "#,
+        r#"
         CREATE TABLE IF NOT EXISTS paste
         (
             id SERIAL PRIMARY KEY NOT NULL,
@@ -23,14 +31,6 @@ pub(crate) async fn init_db(client: &Client) -> Result<(), tokio_postgres::Error
             data bytea NOT NULL,
             user_id int REFERENCES "user" NOT NULL
         )"#,
-        r#"
-        CREATE TABLE IF NOT EXISTS "user"
-        (
-            id SERIAL PRIMARY KEY NOT NULL,
-            created_at timestamp with time zone NOT NULL DEFAULT (now() at time zone 'utc'),
-            username TEXT UNIQUE NOT NULL CHECK(length(username) <= 15)
-        )
-        "#,
     ];
 
     for query in &INIT_SQL {
