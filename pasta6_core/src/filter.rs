@@ -11,7 +11,8 @@ use tracing::error;
 use warp::{any, body::content_length_limit, body::form, cookie, reject, Filter, Rejection};
 
 pub const SESSION_COOKIE_NAME: &str = "__Secure-p6.rs.login.v1";
-const MAX_CONTENT_LENGTH: u64 = 1026 * 16; // 16KB
+// TODO: display a proper error if this limit is exceeded.
+const MAX_CONTENT_LENGTH: u64 = 1026 * 512; // 512KB
 
 pub struct TemplateContext<U>
 where
