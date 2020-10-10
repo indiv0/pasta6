@@ -26,5 +26,5 @@ opt-level = 0
 opt-level = 3
 
 [profile.release]
-lto = true
-codegen-units = 1
+# Necessary for flamegraphs to appear correctly.
+debug = true

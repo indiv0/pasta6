@@ -9,3 +9,8 @@
 # yarn/tailwindcss
 /node_modules
 /static/styles.css
+
+# cargo-flamegraph
+perf.data
+perf.data.old
+flamegraph_*.svg

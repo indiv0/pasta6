@@ -3,6 +3,15 @@
 watch_trigger:
 	cargo watch -i .trigger -x build -s "PASTA6_CONFIG=../config.toml cargo test --all" -s 'touch .trigger'
 
+watch_home_flamegraph:
+	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch --no-gitignore -w .trigger -s "RUST_LOG= cargo flamegraph --bin pasta6_home --output flamegraph_pasta6_home.svg"
+
+watch_meta_flamegraph:
+	systemfd --no-pid -s http::0.0.0.0:3031 -- cargo watch --no-gitignore -w .trigger -s "RUST_LOG= cargo flamegraph --bin pasta6_meta --output flamegraph_pasta6_meta.svg"
+
+watch_paste_flamegraph:
+	systemfd --no-pid -s http::0.0.0.0:3032 -- cargo watch --no-gitignore -w .trigger -s "RUST_LOG= cargo flamegraph --bin pasta6_paste --output flamegraph_pasta6_paste.svg"
+
 watch_home:
 	systemfd --no-pid -s http::0.0.0.0:3030 -- cargo watch --no-gitignore -w .trigger -s "cargo run --package pasta6_home"
 
