@@ -11,6 +11,17 @@
 /static/styles.css
 
 # cargo-flamegraph
-perf.data
-perf.data.old
-flamegraph_*.svg
+/perf.data
+/perf.data.old
+/flamegraph_*.svg
+
+# rustc -Zself-profile output
+/*.events
+/*.string_data
+/*.string_index
+
+# measureme crox
+/chrome_profiler.json
+
+# measureme flamegraph
+/rustc.svg
