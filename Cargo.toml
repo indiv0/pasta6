@@ -26,5 +26,6 @@ opt-level = 0
 opt-level = 3
 
 [profile.release]
-# Necessary for flamegraphs to appear correctly.
+# Necessary for correct symbols in flamegraphs and for Sentry debug files.
+# See: https://blog.sentry.io/2018/10/22/getting-started-with-rust-error-tracking
 debug = true

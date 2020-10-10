@@ -1,4 +1,5 @@
-use self::Error::{DbPoolError, DbQueryError, SerdeJsonError};
+use crate::config::ConfigError;
+
 use serde::Serialize;
 use std::fmt::{Display, Formatter, Result};
 use warp::reject::Reject;
@@ -9,26 +10,36 @@ pub enum Error {
     SerdeJsonError(serde_json::error::Error),
     DbPoolError(deadpool_postgres::PoolError),
     DbQueryError(tokio_postgres::Error),
+    ConfigError(ConfigError),
 }
 
 impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Self {
-        SerdeJsonError(err)
+        Self::SerdeJsonError(err)
     }
 }
 
 impl From<deadpool_postgres::PoolError> for Error {
     fn from(err: deadpool_postgres::PoolError) -> Self {
-        DbPoolError(err)
+        Self::DbPoolError(err)
+    }
+}
+
+impl From<ConfigError> for Error {
+    fn from(err: ConfigError) -> Self {
+        Self::ConfigError(err)
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match *self {
-            SerdeJsonError(ref e) => write!(f, "error serializing/deserializing JSON data: {0}", e),
-            DbPoolError(ref e) => write!(f, "error getting connection from DB pool: {0}", e),
-            DbQueryError(ref e) => write!(f, "error executing DB query: {0}", e),
+            Self::SerdeJsonError(ref e) => {
+                write!(f, "error serializing/deserializing JSON data: {0}", e)
+            }
+            Self::DbPoolError(ref e) => write!(f, "error getting connection from DB pool: {0}", e),
+            Self::DbQueryError(ref e) => write!(f, "error executing DB query: {0}", e),
+            Self::ConfigError(ref e) => write!(f, "error reading value from config: {0}", e),
         }
     }
 }

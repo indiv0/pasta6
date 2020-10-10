@@ -1,4 +1,9 @@
-.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test clean
+.PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test clean create_release associate_commits
+
+# Must have `sentry-cli` installed globally.
+SENTRY_ORG=indiv0
+SENTRY_PROJECT=pasta6
+PASTA6_RELEASE_VERSION=`git describe --always --abbrev=40`
 
 watch_trigger:
 	cargo watch -i .trigger -x build -s "PASTA6_CONFIG=../config.toml cargo test --all" -s 'touch .trigger'
@@ -76,7 +81,7 @@ package:
 		deploy/pasta6/nginx
 	(cd deploy && tar czvf pasta6.tar.gz pasta6)
 
-deploy:
+deploy: create_release associate_commits
 	scp deploy/pasta6.tar.gz pasta6:
 	ssh pasta6 -- "sudo -u pasta6 "tar -C /home/pasta6 -xzvf /home/ubuntu/pasta6.tar.gz" && rm /home/ubuntu/pasta6.tar.gz"
 
@@ -93,3 +98,9 @@ clean:
 	cargo clean
 	docker rm -f postgres
 	docker rm -f nginx
+
+create_release:
+	sentry-cli releases -o $(SENTRY_ORG) new -p $(SENTRY_PROJECT) $(PASTA6_RELEASE_VERSION)
+
+associate_commits:
+	sentry-cli releases -o $(SENTRY_ORG) -p $(SENTRY_PROJECT) set-commits --auto $(PASTA6_RELEASE_VERSION)

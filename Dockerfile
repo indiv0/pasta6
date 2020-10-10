@@ -18,6 +18,9 @@ ADD pasta6_meta/Cargo.toml pasta6_meta
 ADD pasta6_paste/Cargo.toml pasta6_paste
 ADD pasta6_util/Cargo.toml pasta6_util
 ADD Cargo.toml .
+ADD build.rs .
+# TODO: we don't need the git dir to compile the app, we just need it to get the commit ID, perhaps this could be an env var?
+ADD .git .git
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/home/root/app/target \
     cargo build --release && \

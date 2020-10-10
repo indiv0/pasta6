@@ -1,6 +1,8 @@
 *
+!.git
 !Cargo.toml
 !Cargo.lock
+!build.rs
 !pasta6_paste/Cargo.toml
 !pasta6_paste/src
 !pasta6_paste/templates/*.html

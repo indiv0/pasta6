@@ -3,6 +3,7 @@ name = "pasta6_home"
 version = "0.1.0"
 authors = ["Nikita Pekin <contact@nikitapek.in>"]
 edition = "2018"
+build = "../build.rs"
 
 [lib]
 path = "src/lib.rs"
@@ -17,6 +18,7 @@ askama_warp = "0.10.0"
 better-panic = "0.2.0"
 deadpool-postgres = "0.5.6"
 pasta6_core = { path = "../pasta6_core" }
+sentry = "0.20.1"
 tokio = { version = "0.2.22", features = ["macros", "rt-threaded"] }
 tokio-postgres = { version = "0.5.5", features = ["with-chrono-0_4"] }
 toml = "0.5.6"

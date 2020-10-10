@@ -9,6 +9,10 @@ secret_key=""
 # TTL for authentication tokens. Required.
 # Tokens with a timestamp more than TTL seconds in the past are treated as expired.
 token_ttl=3600 # 1 hour
+# Client key used to send data to Sentry.
+# Usually referred to as the `SENTRY_DSN`.
+# For more information, see: https://docs.sentry.io
+sentry_dsn="https://9d1922c30eae4976ae49f523e09ffb76@o459601.ingest.sentry.io/5459026"
 
 
 [services.meta]

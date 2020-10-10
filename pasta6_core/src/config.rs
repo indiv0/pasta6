@@ -1,5 +1,8 @@
 use base64::URL_SAFE;
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    fmt::{self, Display, Formatter},
+};
 use std::{env, fs};
 use toml::Value;
 use tracing::trace;
@@ -13,6 +16,15 @@ lazy_static! {
 pub enum ConfigError {
     NotFound(String),
     WrongType(String),
+}
+
+impl Display for ConfigError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::NotFound(ref k) => write!(f, "could not find configuration key {0}", k),
+            Self::WrongType(ref k) => write!(f, "wrong type for configuration key {0}", k),
+        }
+    }
 }
 
 pub struct Config {
@@ -105,6 +117,10 @@ impl Config {
 
     pub fn get_service_domain<'a, 'b>(&'a self, service: &str) -> Result<&str, ConfigError> {
         self.get(&format!("services.{}.domain", service).to_owned())
+    }
+
+    pub fn sentry_dsn(&self) -> Result<&str, ConfigError> {
+        self.get("pasta6.sentry_dsn")
     }
 
     fn _get_nested(&self, key: &str) -> Result<&Value, ConfigError> {
