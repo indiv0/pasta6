@@ -48,7 +48,7 @@ where
     let svc = warp::service(routes);
 
     let make_svc = hyper::service::make_service_fn(|_: _| {
-        // the cline is there because not all warp filters impl Copy
+        // the clone is there because not all warp filters impl Copy
         let svc = svc.clone();
         async move { Ok::<_, Infallible>(svc) }
     });
