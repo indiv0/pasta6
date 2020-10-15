@@ -1,3 +1,6 @@
+# FIXME: 404s don't get logged to sentry (should they?)
+# FIXME: token expirations don't get logged to sentry (should they?)
+# FIXME: database errors don't get logged to sentry (e.g. duplicate username on registration) (should they?)
 .PHONY: watch_trigger watch_home watch_meta watch_paste styles dependencies nginx postgres release package deploy test clean create_release associate_commits
 
 # Must have `sentry-cli` installed globally.
