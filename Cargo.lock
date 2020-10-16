@@ -1279,6 +1279,7 @@ dependencies = [
  "bronco",
  "chrono",
  "deadpool-postgres",
+ "futures-util",
  "lazy_static",
  "listenfd",
  "serde",

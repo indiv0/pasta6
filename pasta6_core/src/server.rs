@@ -1,15 +1,14 @@
+use futures_util::future::FutureExt;
 use listenfd::ListenFd;
-use std::{
-    convert::Infallible,
-    env,
-    net::{Ipv4Addr, TcpListener},
-};
-use tracing::info;
+use std::{convert::Infallible, env, net::{Ipv4Addr, TcpListener}, panic::AssertUnwindSafe};
+use tracing::{error, info};
 use tracing_subscriber::fmt::format::FmtSpan;
-use warp::hyper::Server;
+use warp::{Future, hyper::{Body, Response, Server, service::Service, StatusCode, service::service_fn}};
 use warp::{hyper, Filter, Reply};
 
 use crate::Config;
+
+type HttpResult = Result<Response<Body>, Infallible>;
 
 pub fn bind() -> TcpListener {
     let mut listenfd = ListenFd::from_env();
@@ -92,14 +91,36 @@ where
     let svc = warp::service(routes);
 
     let make_svc = hyper::service::make_service_fn(move |_: _| {
-        // the cline is there because not all warp filters impl Copy
-        let svc = svc.clone();
-        async move { Ok::<_, Infallible>(svc) }
+        // the clone is there because not all warp filters impl Copy
+        let mut svc = svc.clone();
+        // Run `svc.call(req)` immediately, which produces a `Future`. Feed that future to `handle_panics` to
+        // wrap it up and return a panic-handling future. This is done so that a panic in the handler doesn't
+        // terminate the request, but instead returns a properly-formed 500 response.
+        async move { Ok::<_, Infallible>(service_fn(move |req| handle_panics(svc.call(req)))) }
     });
 
     let server = Server::from_tcp(listener).expect("failed to create the server");
 
     server.serve(make_svc).await
+}
+
+/// Wrapper function for hyper services
+async fn handle_panics(fut: impl Future<Output = HttpResult>) -> HttpResult {
+    // Turn panics falling out of the `poll` into errors.
+    let wrapped = AssertUnwindSafe(fut).catch_unwind();
+    match wrapped.await {
+        Ok(response) => response,
+        Err(_panic) => {
+            error!("A panic occurred while handling a request");
+            // TODO: ideally we'd display a themed/templated 500 error page here, instead of a minimal, non-HTML
+            // response.
+            let error = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body("Internal server error".into())
+                .expect("Failed to construct response");
+            Ok(error)
+        }
+    }
 }
 
 pub fn init_tracing(crate_name: &str) {
