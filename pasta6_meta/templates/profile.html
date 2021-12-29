@@ -1,8 +1,0 @@
-{% extends "../../pasta6_core/templates/base.html" %}
-
-{% block content %}
-    <div
-      class="flex flex-col h-screen justify-center items-center bg-gray-100">
-      <p>Hello! You are currently logged in as <strong class="font-bold">{{ ctx.current_user().unwrap().username() }}</strong>. Your user was created at <strong class="font-bold">{{ ctx.current_user().unwrap().created_at() }}</strong>.</p>
-    </div>
-{% endblock %}
