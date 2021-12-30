@@ -6,3 +6,33 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# [`libc`] provides all of the definitions necessary to easily interoperate
+# with C code (or "C-like" code) on each of the platforms that Rust supports.
+# This includes type definitions (e.g. `c_int`), constants (e.g. `EINVAL`) as
+# well as function headers (e.g. `malloc`).
+#
+# The default features of the `libc` crate are disabled to be able to use
+# `libc` in `#![no_std]` crates.
+#
+# [`libc`]: https://crates.io/crates/libc
+libc = { version = "0.2.112", default-features = false }
+
+# If your configuration does not unconditionally abort on panic, which most
+# targets for full operating systems don't (or if your [`custom target`] does
+# not contain `"panic-strategy": "abort"`), then you must tell Cargo to do so
+# or add an `eh_personality` function, which requires a nightly compiler.
+# [`Here is Rust's documentation about it`], and
+# [`here is some discussion about it`].
+#
+# For this program, we use `profile.dev.panic = "abort"` and
+# `profile.release.panic = "abort"`.
+#
+# [`custom target`]: https://docs.rust-embedded.org/embedonomicon/custom-target.html
+# [`Here is Rust's documentation about it`]: https://doc.rust-lang.org/unstable-book/language-features/lang-items.html#more-about-the-language-items
+# [`here is some discussion about it`]: https://old.reddit.com/r/rust/comments/estvau/til_why_the_eh_personality_language_item_is/
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
