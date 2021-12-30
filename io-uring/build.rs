@@ -31,6 +31,14 @@ fn main() {
         // variables.
         .allowlist_type("io_uring_params")
         .allowlist_var("__NR_io_uring_setup")
+        // Do not generate layout tests.
+        //
+        // These tests rely on UB (so they generate compiler warnings), and
+        // it is [recommended to disable them].
+        //
+        // [recommended to disable them]:
+        // https://github.com/rust-lang/rust-bindgen/issues/1651#issuecomment-971425905
+        .layout_tests(false)
         // Finish the builder and generate the bindings.
         .generate()
         .expect("unable to generate bindings")
