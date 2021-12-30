@@ -35,6 +35,8 @@ extern crate libc;
 
 use core::panic::PanicInfo;
 
+mod sys;
+
 // A function marked with the`#[panic_handler]` attribute defines the
 // behaviour of panics, both library level panics (`core::panic!`) and
 // language level panics (out of bounds indexing).

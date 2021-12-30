@@ -5,7 +5,17 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[build-dependencies]
+# [`bindgen`] automatically generates Rust FFI bindings to C (and some C++)
+# libraries.
+#
+# This program uses `bindgen` to generate bindings to `linux/io_uring.h`.
+#
+# [`bindgen`]: https://crates.io/crates/bindgen
+bindgen = { version = "0.59.2", default-features = false }
+
 [dependencies]
+
 # [`libc`] provides all of the definitions necessary to easily interoperate
 # with C code (or "C-like" code) on each of the platforms that Rust supports.
 # This includes type definitions (e.g. `c_int`), constants (e.g. `EINVAL`) as
