@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "pasta6",
+  "pasta6-benchmark",
 ]
 
 # If the `test` crate is used (e.g. when calling `cargo test`) then the `std`

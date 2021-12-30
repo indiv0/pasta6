@@ -4,15 +4,20 @@ use monoio::RuntimeBuilder;
 use std::thread;
 
 fn main() {
-    const CORES: usize = 4;
+    const CORES: &[usize] = &[0, 1, 2];
     const ADDR: &str = "0.0.0.0:23300";
 
-    println!("running HTTP server on {} with {} cores", ADDR, CORES);
+    println!(
+        "running HTTP server
+address: {}
+cores: {:?}",
+        ADDR, CORES
+    );
 
     let mut threads = Vec::new();
-    for cpu in 0..CORES {
+    for cpu in CORES {
         let handle = thread::spawn(move || {
-            utils::bind_to_cpu_set(Some(cpu)).expect("error binding to CPU");
+            utils::bind_to_cpu_set(Some(*cpu)).expect("error binding to CPU");
             let mut rt = RuntimeBuilder::new()
                 .with_entries(32768)
                 .build()
