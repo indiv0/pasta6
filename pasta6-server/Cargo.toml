@@ -6,10 +6,3 @@ edition = "2021"
 [dependencies]
 
 pasta6 = { path = "../pasta6" }
-libc = { version = "0.2.112", default-features = false }
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
