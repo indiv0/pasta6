@@ -97,6 +97,13 @@ dependencies = [
 name = "pasta6"
 version = "0.1.0"
 dependencies = [
+ "pasta6-io-uring",
+]
+
+[[package]]
+name = "pasta6-io-uring"
+version = "0.1.0"
+dependencies = [
  "bindgen",
  "libc",
 ]

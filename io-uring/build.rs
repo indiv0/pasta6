@@ -4,6 +4,7 @@ fn main() {
     use std::path::PathBuf;
 
     const INCLUDE: &str = r#"
+#include <sys/syscall.h>
 #include <linux/io_uring.h>
     "#;
 
@@ -17,14 +18,19 @@ fn main() {
         // Rather than creating an actual header file, we define an ephemeral
         // input header file that gets created when bindgen is executed.
         .header_contents("include-file.h", INCLUDE)
+        // Use the given prefix for the raw types instead of
+        // `::std::os::raw`. This is necessary in `#![no_std]` programs.
+        .ctypes_prefix("libc")
+        // Use core instead of libstd in the generated bindings.
+        .use_core()
         // Allowlist the given types and variables so that they (and all the
         // types that they transitively refer to) appear in the generated
         // bindings.
         //
         // We use an allowlist to only bring in necessary types and
         // variables.
-        .allowlist_type("")
-        .allowlist_var("")
+        .allowlist_type("io_uring_params")
+        .allowlist_var("__NR_io_uring_setup")
         // Finish the builder and generate the bindings.
         .generate()
         .expect("unable to generate bindings")

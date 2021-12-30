@@ -1,2 +1,3 @@
 # Cargo-compiled binaries
-pasta6/target
+target
+pasta6-server/target
