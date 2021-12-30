@@ -5,4 +5,6 @@ edition = "2021"
 
 [dependencies]
 
+hyper = { version = "0.14.16", default-features = false, features = ["http1", "server", "stream"]}
+monoio = { version = "0.0.3", default-features = false, features = ["async-cancel", "utils"] }
 pasta6 = { path = "../pasta6" }
