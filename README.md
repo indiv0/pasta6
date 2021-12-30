@@ -11,6 +11,17 @@
 [`io_uring`]: https://kernel.dk/io_uring.pdf
 [`pasta6-server`]: ./io-uring
 
+### `pasta6-io-uring`
+
+The `pasta6-io-uring` crate is a userspace interface for `io_uring`.
+
+The `bindgen` crate is used to generate the `linux/io_uring.h` bindings,
+located in [`io-uring/src/sys/sys.rs`]. These bindings are not generated on
+every compile. To force binding generation, enable the
+`pasta6-io-uring/bindgen` feature.
+
+[`io-uring/src/sys/sys.rs`]: ./io-uring/src/sys/sys.rs
+
 ## `#![no_std]`
 
 The [`std`] crate is Rust's standard library. It assumes that the program

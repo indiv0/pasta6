@@ -1,4 +1,8 @@
+#[cfg(not(feature = "bindgen"))]
+fn main() {}
+
 // Running `cargo build` generates bindings to `linux/io_uring.h` on the fly.
+#[cfg(feature = "bindgen")]
 fn main() {
     use std::env;
     use std::path::PathBuf;

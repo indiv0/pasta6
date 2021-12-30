@@ -11,7 +11,7 @@ description = "Userspace interface for io_uring"
 # This program uses `bindgen` to generate bindings to `linux/io_uring.h`.
 #
 # [`bindgen`]: https://crates.io/crates/bindgen
-bindgen = { version = "0.59.2", default-features = false }
+bindgen = { version = "0.59.2", default-features = false, optional = true }
 
 [dependencies]
 
