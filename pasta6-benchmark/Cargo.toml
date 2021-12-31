@@ -9,4 +9,5 @@ hyper = { version = "0.14.16", default-features = false, features = ["http1", "c
 local-sync = { version = "0.0.5", default-features = false }
 monoio = { version = "0.0.3", default-features = false, features = ["async-cancel", "utils"] }
 monoio-compat = { version = "0.0.4", default-features = false }
+rand = { version = "0.8.4", default-features = false, features = ["std", "std_rng"] }
 tokio = { version = "1.15.0", default-features = false, features = ["io-util"] }

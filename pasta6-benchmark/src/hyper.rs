@@ -10,7 +10,7 @@ use hyper::{
     client::connect::{Connected, Connection},
     rt::Executor,
     service::Service,
-    Body, Client, Uri,
+    Body, Client, Method, Request, Uri,
 };
 use monoio::net::TcpStream;
 use monoio_compat::{AsyncRead, AsyncWrite, TcpStreamCompat};
@@ -104,8 +104,23 @@ pub(crate) fn build() -> Client<HyperConnector> {
         .build::<HyperConnector, Body>(connector)
 }
 
-pub(crate) async fn send(client: &Client<HyperConnector>, addr: Uri) -> Result<(), hyper::Error> {
-    let response = client.get(addr).await?;
+pub(crate) async fn get(client: &Client<HyperConnector>, addr: Uri) -> Result<(), hyper::Error> {
+    client.get(addr).await.map(|_| ())
+}
+
+pub(crate) async fn post(client: &Client<HyperConnector>, addr: Uri) -> Result<(), hyper::Error> {
+    use rand::Rng;
+
+    // TODO: generate random bodies more efficiently?.
+    let value: u8 = rand::thread_rng().gen();
+    let body = format!("content={}", value);
+
+    let req = Request::builder()
+        .uri(addr)
+        .method(Method::POST)
+        .body(Body::from(body))
+        .unwrap();
+    let response = client.request(req).await?;
     let _body = body::to_bytes(response.into_body()).await?;
     Ok(())
 }

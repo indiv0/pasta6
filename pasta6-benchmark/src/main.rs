@@ -28,7 +28,7 @@ fn main() {
     const CONNS_PER_CORE: usize = 80;
     const CORES: &[usize] = &[3, 4, 5];
     const QPS_PER_CORE: Option<usize> = None;
-    const TARGET: &str = "http://127.0.0.1:23300/";
+    const TARGET: &str = "http://127.0.0.1:23300/todo";
 
     let config = Arc::new(Config {
         conns_per_core: CONNS_PER_CORE,
@@ -142,7 +142,7 @@ async fn run_conn(
         }
 
         let begin = Instant::now();
-        hyper::send(&client, target.clone())
+        hyper::get(&client, target.clone())
             .await
             .expect("connection exit");
         let eps_ = begin.elapsed().as_micros() as u64;
