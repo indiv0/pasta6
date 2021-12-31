@@ -142,7 +142,7 @@ async fn run_conn(
         }
 
         let begin = Instant::now();
-        hyper::get(&client, target.clone())
+        hyper::post(&client, target.clone())
             .await
             .expect("connection exit");
         let eps_ = begin.elapsed().as_micros() as u64;
