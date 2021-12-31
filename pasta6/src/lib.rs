@@ -52,19 +52,19 @@ pub async fn handler(db: &Db, req: Request<Body>) -> Result<Response<Body>, Infa
 }
 
 pub fn get_todo(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    let response = Response::new(Body::from(
-        "\
-<html>\
-<head></head>\
-<body>\
-  <form method=\"post\">\
-    <label for=\"content\">TODO:</label>\
-    <input type=\"text\" name=\"content\" id=\"content\" required>\
-  </form>\
-</body>\
-</html>\
-",
-    ));
+    let response = Response::new(Body::from("hi!"));
+    //        "\
+    //<html>\
+    //<head></head>\
+    //<body>\
+    //  <form method=\"post\">\
+    //    <label for=\"content\">TODO:</label>\
+    //    <input type=\"text\" name=\"content\" id=\"content\" required>\
+    //  </form>\
+    //</body>\
+    //</html>\
+    //",
+    //    ));
     Ok(response)
 }
 
