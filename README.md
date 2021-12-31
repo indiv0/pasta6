@@ -10,6 +10,27 @@
 [`pasta6-benchmark`]: ./pasta6-benchmark
 [`pasta6-server`]: ./pasta6-server
 
+## Running
+
+To run the development server, enter the `pasta6-server` directory and run:
+
+```shell
+cargo watch -w .. -i database -s "cargo run --release"
+```
+
+## Profiling
+
+To execute the server for profiling with `cargo-flamegraph`, first enter a
+Nix shell with `perf`, then run `cargo-flamegraph`, after enabling the
+necessary kernel features:
+
+```shell
+nix-shell -p linuxPackages.perf
+echo 0 | sudo tee /proc/sys/kernel/kptr_restrict
+echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
+CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph -c "record -c 100 -F 99 --call-graph dwarf -g"
+```
+
 ## Benchmarks
 
 **Configuration A:**
@@ -57,10 +78,11 @@
 - QPS limit per core: 20000
 - Global QPS limit: 60000
 
-| Commit ID | Configuration | Average QPS | Latency Average |
-| --------- | ------------- | ----------- | --------------- |
-| 21a59e54  | A             | 303468.969  | 783.796 us      |
-| 21a59e54  | B             | 30059.957   | 1832.496 us     |
-| 21a59e54  | C             | 15040.026   | 3164.967 us     |
-| 21a59e54  | D             | 30167.947   | 2166.290 us     |
-| 21a59e54  | E             | 60173.594   | 1248.999 us     |
+| Commit ID | Description       | Configuration | Average QPS | Latency Average |
+| --------- | ----------------- | ------------- | ----------- | --------------- |
+| 21a59e54  | GET baseline      | A             | 303468.969  | 783.796 us      |
+| 21a59e54  | GET baseline      | B             | 30059.957   | 1832.496 us     |
+| 21a59e54  | GET baseline      | C             | 15040.026   | 3164.967 us     |
+| 21a59e54  | GET baseline      | D             | 30167.947   | 2166.290 us     |
+| 21a59e54  | GET baseline      | E             | 60173.594   | 1248.999 us     |
+| 501820cf  | w/ perf overhead  | A             | 88464.500   | 2651.111 us     |

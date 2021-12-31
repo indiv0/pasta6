@@ -2,5 +2,10 @@
 target
 pasta6-server/target
 
+# cargo-flamegraph data & graphs
+perf.data
+perf.data.old
+flamegraph.svg
+
 # sled database storage
 database
