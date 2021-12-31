@@ -10,3 +10,5 @@ edition = "2021"
 monoio = { version = "0.0.3", default-features = false }
 monoio-compat = { version = "0.0.4", default-features = false }
 hyper = { version = "0.14.16", default-features = false, features = ["http1", "server"]}
+rand = { version = "0.8.4", default-features = false, features = ["std", "std_rng"] }
+sled = { version = "0.34.6", default-features = false }
