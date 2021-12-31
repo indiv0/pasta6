@@ -1,3 +1,6 @@
 # Cargo-compiled binaries
 target
 pasta6-server/target
+
+# sled database storage
+database
