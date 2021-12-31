@@ -86,3 +86,4 @@ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph -c "record -c 100 -F 99 --call
 | 21a59e54  | GET baseline      | D             | 30167.947   | 2166.290 us     |
 | 21a59e54  | GET baseline      | E             | 60173.594   | 1248.999 us     |
 | 501820cf  | w/ perf overhead  | A             | 88464.500   | 2651.111 us     |
+| af6e08ac  | POST baseline     | A             | 136.678     | 1474505.000 us  |
