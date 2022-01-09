@@ -24,6 +24,16 @@ pkgs.mkShell {
     # See: https://bevyengine.org/learn/book/getting-started/setup/
     clang
     lld
+
+    # OpenSSL for TLS web server.
+    pkg-config
+    openssl
+
+    # HTTP server load testing
+    wrk
+
+    # CLI utility for launching servers on fly.io
+    flyctl
   ];
 
   # `LIBCLANG_PATH` must be set for `rust-bindgen` to work. `rust-bindgen` is

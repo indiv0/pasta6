@@ -3,12 +3,22 @@ name = "pasta6"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "pasta6"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pasta6"
+path = "src/bin.rs"
 
 [dependencies]
 
-monoio = { version = "0.0.3", default-features = false }
-monoio-compat = { version = "0.0.4", default-features = false }
-hyper = { version = "0.14.16", default-features = false, features = ["http1", "server"]}
-rand = { version = "0.8.4", default-features = false, features = ["std", "std_rng"] }
-sled = { version = "0.34.6", default-features = false }
+actix-multipart = { version = "0.4.0-beta.6", default-features = false }
+actix-web = { version = "4.0.0-beta.19", default-features = false }
+deadpool-postgres = { version = "0.10.1", default-features = false }
+futures-util = { version = "0.3.19", default-features = false }
+tokio-postgres = { version = "0.7.5", default-features = false }
+
+[dev-dependencies]
+reqwest = { version = "0.11.8", default-features = false, features = ["multipart"] }
+tokio-test = { version = "0.4.2", default-features = false }
