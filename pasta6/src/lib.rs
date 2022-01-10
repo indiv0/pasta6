@@ -1,4 +1,4 @@
-pub use db::{get_all, insert, Database, Pool};
+pub use db::{get_100, insert, Database, Pool};
 pub use handler::index;
 pub use model::Todo;
 
@@ -97,18 +97,18 @@ mod db {
         Todo(row.get(0))
     }
 
-    /// Gets all `Todo`s from the database.
+    /// Get 100 `Todo`s from the database.
     ///
     /// ```
     /// # use pasta6::*;
     /// # let pool = Pool::default();
     /// # tokio_test::block_on(async move {
     /// # let db = pool.get().await;
-    /// get_all(&db);
+    /// get_100(&db);
     /// # });
     /// ```
-    pub async fn get_all(db: &Database) -> impl Iterator<Item = Todo> {
-        const STATEMENT: &str = "SELECT content FROM pasta.todo;";
+    pub async fn get_100(db: &Database) -> impl Iterator<Item = Todo> {
+        const STATEMENT: &str = "SELECT content FROM pasta.todo LIMIT 100;";
         let statement = db.0.prepare(STATEMENT).await.unwrap();
         db.0.query(&statement, &[])
             .await
@@ -242,13 +242,12 @@ fn server(pool: Pool, port: u16) -> (impl FnOnce(), u16) {
 mod handler {
     use crate::Database;
     use crate::Todo;
-    use crate::{get_all, insert};
+    use crate::{get_100, insert};
 
     /// Serializes a `GET /` response into a string slice.
     pub async fn index(db: &Database) -> String {
         // Fetch a list of all TODOs from the database.
-        // TODO: limit this to the 10 newest TODOs?
-        let mut todos = get_all(db).await.peekable();
+        let mut todos = get_100(db).await.peekable();
 
         // Serialize the TODOs to HTML.
         let todos = if todos.peek().is_some() {
