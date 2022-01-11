@@ -1,6 +1,12 @@
 .PHONY: all
 all:
-	cargo watch -s "make configure && cargo test && cargo bench && cargo run"
+	cargo watch -s "make all_"
+	#cargo watch -s "cargo build --release --target=wasm32-wasi && cargo test --lib --target=wasm32-wasi && ~/.cargo/bin/lunatic target/wasm32-wasi/release/pasta6.wasm"
+	#cargo watch -s "make configure && cargo test && cargo bench && cargo build --target=wasm32-wasi && lunaticvm pasta.wasm"
+
+.PHONY: all_
+all_:
+	cargo check && cargo test && cargo run --release
 
 .PHONY: configure
 configure:

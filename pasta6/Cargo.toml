@@ -13,12 +13,16 @@ path = "src/bin.rs"
 
 [dependencies]
 
-actix-multipart = { version = "0.4.0-beta.6", default-features = false }
-actix-web = { version = "4.0.0-beta.19", default-features = false }
-deadpool-postgres = { version = "0.10.1", default-features = false }
-futures-util = { version = "0.3.19", default-features = false }
-tokio-postgres = { version = "0.7.5", default-features = false }
+httparse = { version = "1.5.1", default-features = false, features = ["std"] }
+memchr = { version = "2.4.1", default-features = false, features = ["std"] }
+#actix-multipart = { version = "0.4.0-beta.6", default-features = false }
+#actix-web = { version = "4.0.0-beta.19", default-features = false }
+#deadpool-postgres = { version = "0.10.1", default-features = false }
+#futures-util = { version = "0.3.19", default-features = false }
+#tokio-postgres = { version = "0.7.5", default-features = false }
+lunatic = { version = "0.7.1", default-features = false }
 
 [dev-dependencies]
-reqwest = { version = "0.11.8", default-features = false, features = ["multipart"] }
-tokio-test = { version = "0.4.2", default-features = false }
+ureq = { version = "*", default-features = false }
+#reqwest = { version = "0.11.8", default-features = false, features = ["multipart"] }
+#tokio-test = { version = "0.4.2", default-features = false }
