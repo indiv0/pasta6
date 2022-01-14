@@ -267,11 +267,11 @@ impl Body<'_> {
             BodyKind::Connection { connection, length } => match length {
                 BodyLength::Known(length) => {
                     // FIXME: should this be less than or leq?
-                    debug_assert!(connection.head_length + length <= connection.buf.len());
+                    assert!(connection.head_length + length <= connection.buf.len());
                     let buf = connection
                         .buf
                         .get(connection.head_length..connection.head_length + length);
-                    debug_assert!(buf.is_some());
+                    assert!(buf.is_some());
                     let buf = buf.unwrap();
                     let string = str::from_utf8(buf)?.to_string();
                     Ok(string)
