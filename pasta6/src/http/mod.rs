@@ -173,6 +173,7 @@ fn handle_connection(
                     if !reached_eof {
                         continue;
                     } else {
+                        debug_assert!(bytes_read > 0);
                         // TODO: is just returning in the event of an unparsable HTTP
                         //   request head and an unexpected EOF the correct thing to
                         //   do?
