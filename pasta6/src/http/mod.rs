@@ -232,10 +232,12 @@ where
 }
 
 impl Request<'_> {
+    #[inline]
     pub(super) fn path(&self) -> &str {
         self.path
     }
 
+    #[inline]
     pub(super) fn body(&self) -> &[u8] {
         self.body
     }
@@ -243,6 +245,7 @@ impl Request<'_> {
 
 // FIXME: replace this with `TryFrom`.
 impl From<&str> for Method {
+    #[inline]
     fn from(string: &str) -> Self {
         match string {
             "GET" => Method::Get,
