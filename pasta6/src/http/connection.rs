@@ -457,6 +457,30 @@ mod test {
         });
     }
 
+    fn clone_tcp_stream(tcp_stream: &TcpStream) -> TcpStream {
+        #[cfg(target_arch = "wasm32")]
+        return tcp_stream.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        return tcp_stream.try_clone().unwrap();
+    }
+
+    #[test]
+    fn test_multiple_requests() {
+        #[cfg(feature = "logging")]
+        let _ = tracing_subscriber::fmt::try_init();
+        let port = random_port();
+        crate::request!(HelloWorld, port, |port: u16| {
+            let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            tcp_stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
+            let mut connection = Connection::new(clone_tcp_stream(&tcp_stream));
+            let response = connection.next_response().unwrap();
+            assert_eq!(response.code, 200);
+            tcp_stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
+            let response = connection.next_response().unwrap();
+            assert_eq!(response.code, 200);
+        });
+    }
+
     #[macro_export]
     macro_rules! request {
         ( $handler:expr, $port:expr, $test:expr ) => {
