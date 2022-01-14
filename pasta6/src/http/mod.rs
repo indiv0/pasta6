@@ -12,6 +12,11 @@ mod header;
 pub(super) use crate::http::connection::Response;
 pub(super) use crate::http::header::Headers;
 
+/// Maximum number of headers allowed in an HTTP request.
+const MAX_REQUEST_HEADERS: usize = 100;
+/// Initial buffer size allocated for an HTTP request.
+const INIT_REQUEST_BUFFER_SIZE: usize = 1024;
+
 pub(crate) struct Request<'buf> {
     method: Method,
     path: &'buf str,
@@ -37,12 +42,12 @@ pub(crate) trait Handler {
 }
 
 #[inline]
-pub(crate) fn server<H>((parent, handler): (Process<()>, H), _mailbox: Mailbox<()>)
+pub(crate) fn server<H>((parent, handler, port): (Process<()>, H, u16), _mailbox: Mailbox<()>)
 where
     H: Handler,
 {
-    println!("server binding to 127.0.0.1:3000");
-    let listener = match TcpListener::bind("127.0.0.1:3000") {
+    println!("server binding to 127.0.0.1:{}", port);
+    let listener = match TcpListener::bind(format!("127.0.0.1:{}", port)) {
         Ok(listener) => listener,
         Err(e) => {
             eprintln!("bind error: {}", e);
@@ -72,30 +77,85 @@ where
 {
     println!("server handling connection");
     // Allocate a buffer to store request data.
-    let mut buf = [0; 1024];
+    // TODO: re-use this buffer between requests.
+    // TODO: allow non-contiguous buffers to allow re-allocation.
+    // TODO: add a limit to the size of a single HTTP header.
+    // TODO: add a limit to the total size of the request head.
+    // TODO: shrink this buffer after the request is processed?
+    let mut buf = vec![0; INIT_REQUEST_BUFFER_SIZE];
     // Read as much data as possible from the TCP stream into the buffer.
     println!("server reading stream");
-    let bytes_read = match tcp_stream.read(&mut buf) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            eprintln!("read error: {}", e);
-            panic!();
+    let mut bytes_read = 0;
+    let request = loop {
+        // If there is no remaining space in the buffer to read into, then
+        // we need to grow the buffer.
+        // TODO: grow the buffer in powers of two to perform O(log n)
+        //   allocations rather than O(n) allocations.
+        if bytes_read >= buf.len() {
+            debug_assert!(bytes_read == buf.len());
+            const EMPTY_BUFFER: [u8; INIT_REQUEST_BUFFER_SIZE] = [0; INIT_REQUEST_BUFFER_SIZE];
+            buf.extend_from_slice(&EMPTY_BUFFER);
         }
+
+        bytes_read += match tcp_stream.read(&mut buf[bytes_read..]) {
+            Ok(bytes_read) => {
+                println!("server bytes read: {}", bytes_read);
+                bytes_read
+            }
+            Err(e) => {
+                eprintln!("read error: {}", e);
+                panic!();
+            }
+        };
+        // Parse the data into an HTTP request.
+        println!(
+            "server parsing request: {}",
+            String::from_utf8_lossy(&buf[..bytes_read])
+        );
+        match Request::parse(&buf[..bytes_read]) {
+            ParseResult::Ok(request) => break request,
+            ParseResult::Partial => continue,
+            ParseResult::Error(e) => match e {
+                // RFC 6585 section 5:
+                // > The 431 status code indicates that the server is
+                // > unwilling to process the request because its header
+                // > fields are too large. The request MAY be resubmitted
+                // > after reducing the size of the request header fields.
+                // >
+                // > It can be used both when the set of request header
+                // > fields in total is too large, and when a single header
+                // > field is at fault. In the latter case, the response
+                // > representation SHOULD specify which header field was too
+                // > large.
+                httparse::Error::TooManyHeaders => {
+                    let response = Response::from_static(431, "");
+                    println!("server writing response");
+                    match connection::write_response(&mut tcp_stream, response) {
+                        Ok(()) => {}
+                        Err(e) => {
+                            eprintln!("write error: {}", e);
+                            panic!()
+                        }
+                    }
+                    println!("server flushing response");
+                    match tcp_stream.flush() {
+                        Ok(()) => {}
+                        Err(e) => {
+                            eprintln!("flush error: {}", e);
+                            panic!();
+                        }
+                    }
+                    println!("server closing connection");
+                    return;
+                }
+                _ => {
+                    eprintln!("parse error: {}", e);
+                    panic!()
+                }
+            },
+        };
     };
-    println!("server bytes read: {}", bytes_read);
-    // Parse the data into an HTTP request.
-    println!(
-        "server parsing request: {}",
-        String::from_utf8_lossy(&buf[..bytes_read])
-    );
-    let request = match Request::parse(&buf[..bytes_read]) {
-        ParseResult::Ok(request) => request,
-        ParseResult::Partial => unimplemented!(),
-        ParseResult::Error(e) => {
-            eprintln!("parse error: {}", e);
-            panic!();
-        }
-    };
+    println!("server total bytes read: {}", bytes_read);
     // Invoke the provided handler function to process the request.
     let response = handler.handle(&request);
     // TODO: what's the proper behaviour if the handler defined these headers?
@@ -156,7 +216,7 @@ impl Request<'_> {
 
     #[inline]
     fn parse(buf: &[u8]) -> ParseResult<Request> {
-        let mut headers = [httparse::EMPTY_HEADER; 0];
+        let mut headers = [httparse::EMPTY_HEADER; MAX_REQUEST_HEADERS];
         let mut request = httparse::Request::new(&mut headers);
         let idx = match request.parse(buf) {
             Ok(httparse::Status::Complete(idx)) => idx,

@@ -6,7 +6,7 @@ struct App;
 
 #[inline]
 pub(crate) fn server(parent: Process<()>, mailbox: Mailbox<()>) {
-    crate::http::server((parent, App), mailbox)
+    crate::http::server((parent, App, 3000), mailbox)
 }
 
 impl Handler for App {

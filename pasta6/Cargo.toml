@@ -18,6 +18,7 @@ bytes = { version = "1.1.0", default-features = false }
 lunatic = { version = "0.7.1", default-features = false }
 
 [dev-dependencies]
+rand = { version = "0.8.4" , default-features = false, features = ["std", "std_rng"] }
 regex = { version = "1.5.4", default-features = false, features = ["std", "unicode-gencat", "perf"] }
 
 [target.'cfg(target_arch = "aarch64")'.dev-dependencies]
