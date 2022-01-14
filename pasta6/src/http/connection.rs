@@ -485,21 +485,6 @@ mod test {
                     }
                 };
                 assert!(re.is_match(response_str));
-
-                //assert_eq!(response.body, b"hello, world!");
-
-                //let response = ureq::get("http://127.0.0.1:3000").call().unwrap();
-                //assert_eq!(response.get_url(), "http://127.0.0.1:3000/");
-                //assert_eq!(response.http_version(), "HTTP/1.1");
-                //assert_eq!(response.status(), 200);
-                //assert_eq!(response.status_text(), "OK");
-                //assert_eq!(response.headers_names(), vec!["content-length", "date"]);
-                //assert_eq!(response.header("content-length").unwrap(), "13");
-                //let re = Regex::new(r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT").unwrap();
-                //assert!(re.is_match(response.header("date").unwrap()));
-                //assert_eq!(response.content_type(), "text/plain");
-                //assert_eq!(response.charset(), "utf-8");
-                //assert_eq!(response.into_string().unwrap(), "hello, world!");
             }
         );
     }
