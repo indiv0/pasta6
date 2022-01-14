@@ -7,9 +7,9 @@ edition = "2021"
 name = "pasta6"
 path = "src/lib.rs"
 
-[[bin]]
-name = "pasta6"
-path = "src/bin.rs"
+#[[bin]]
+#name = "pasta6"
+#path = "src/bin.rs"
 
 [dependencies]
 
@@ -23,6 +23,8 @@ memchr = { version = "2.4.1", default-features = false, features = ["std"] }
 lunatic = { version = "0.7.1", default-features = false }
 
 [dev-dependencies]
-ureq = { version = "*", default-features = false }
-#reqwest = { version = "0.11.8", default-features = false, features = ["multipart"] }
-#tokio-test = { version = "0.4.2", default-features = false }
+regex = { version = "1.5.4", default-features = false, features = ["std", "unicode-perl"] }
+
+[target.'cfg(target_arch = "aarch64")'.dev-dependencies]
+hyper = { version = "0.14.16", default-features = false, features = ["http1", "server", "tcp"] }
+tokio = { version = "1.15.0", default-features = false, features = ["rt"] }

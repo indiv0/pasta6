@@ -6,7 +6,12 @@ all:
 
 .PHONY: all_
 all_:
-	cargo check && cargo test && cargo run --release
+	#cargo check && cargo wasi test -- --nocapture && cargo run --release
+	#cargo check && cargo test --target aarch64-unknown-linux-gnu && cargo wasi test -- --nocapture
+	#cargo check
+	cargo test --target aarch64-unknown-linux-gnu
+	#CARGO_TARGET_WASM32_WASI_RUNNER=lunatic cargo wasi test -- --nocapture
+	cargo test
 
 .PHONY: configure
 configure:

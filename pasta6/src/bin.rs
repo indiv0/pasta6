@@ -1,3 +1,3 @@
 fn main() {
-    pasta6::run();
+    //pasta6::run();
 }
