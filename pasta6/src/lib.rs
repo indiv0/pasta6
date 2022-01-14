@@ -11,7 +11,9 @@ pub fn run() {
     // doesn't work outside of one.
     tracing::info!("spawning server process");
     spawn_with!(this, crate::app::server).unwrap();
-    loop {}
+    loop {
+        process::sleep(u64::MAX);
+    }
 }
 
 /// Define a wrapper macro for `process::spawn` that initializes our
