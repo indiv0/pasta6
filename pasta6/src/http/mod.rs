@@ -84,7 +84,10 @@ where
     };
     println!("server bytes read: {}", bytes_read);
     // Parse the data into an HTTP request.
-    println!("server parsing request");
+    println!(
+        "server parsing request: {}",
+        String::from_utf8_lossy(&buf[..bytes_read])
+    );
     let request = match Request::parse(&buf[..bytes_read]) {
         ParseResult::Ok(request) => request,
         ParseResult::Partial => unimplemented!(),
