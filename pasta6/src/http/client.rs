@@ -1,24 +1,24 @@
 use crate::http::connection::Connection;
 use crate::http::{Method, Response};
-use std::io::Write;
-
-pub(crate) type ClientResult<T> = Result<T, ClientError>;
+use crate::net::TcpStream;
+use std::io::{self, Write};
 
 pub(crate) struct Client {
-    tcp_stream: lunatic::net::TcpStream,
+    tcp_stream: TcpStream,
     connection: Connection,
 }
 
+pub(crate) type ClientResult<T> = Result<T, ClientError>;
+
+#[derive(Debug)]
 pub(crate) struct ClientError {
     _source: Box<dyn std::error::Error>,
 }
 
-#[cfg(target_arch = "wasm32")]
 impl Client {
     #[inline]
-    pub(crate) fn new(host: &str) -> ClientResult<Self> {
-        let tcp_stream = lunatic::net::TcpStream::connect(host)?;
-        let connection = Connection::new(tcp_stream.clone());
+    pub(crate) fn new(tcp_stream: TcpStream) -> ClientResult<Self> {
+        let connection = Connection::new(tcp_stream.try_clone()?);
         Ok(Self {
             tcp_stream,
             connection,

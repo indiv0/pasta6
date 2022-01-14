@@ -85,30 +85,35 @@ impl Handler for App {
     }
 }
 
-#[cfg(all(test, target_arch = "wasm32"))]
-mod test {
-    #[test]
-    fn test_get() {
-        crate::app::server();
-    }
-}
-
-#[cfg(all(test, not(target_arch = "wasm32")))]
-mod test {
-    #[test]
-    fn test_get() {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
-        rt.block_on(async {
-            let (tx, server) = crate::app::server(3000).await;
-
-            let client_join_handle = tokio::task::spawn_blocking(move || {});
-            client_join_handle.await.unwrap();
-
-            tx.send(()).unwrap();
-            server.await.unwrap();
-        });
-    }
-}
+//#[cfg(all(test, target_arch = "wasm32"))]
+//mod test {
+//    #[test]
+//    fn test_get() {
+//        crate::app::server();
+//    }
+//}
+//
+//#[cfg(all(test, not(target_arch = "wasm32")))]
+//mod test {
+//    #[test]
+//    fn test_get() {
+//        let rt = tokio::runtime::Builder::new_current_thread()
+//            .enable_io()
+//            .build()
+//            .unwrap();
+//        rt.block_on(async {
+//            let (tx, server) = crate::app::server(3000).await;
+//
+//            let client_join_handle = tokio::task::spawn_blocking(move || {
+//                let tcp_stream = std::net::TcpStream::connect("127.0.0.1:3000")
+//                    .unwrap()
+//                    .into();
+//                let client = crate::http::Client::new(tcp_stream).unwrap();
+//            });
+//            client_join_handle.await.unwrap();
+//
+//            tx.send(()).unwrap();
+//            server.await.unwrap();
+//        });
+//    }
+//}

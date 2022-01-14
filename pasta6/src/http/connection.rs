@@ -1,12 +1,9 @@
 use crate::http::Headers;
+use crate::net::TcpStream;
 use bytes::Bytes;
-#[cfg(target_arch = "wasm32")]
-use lunatic::net::TcpStream;
 use std::fmt::{self, Formatter};
 use std::io::Read;
 use std::io::{self, Write};
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::TcpStream;
 use std::str;
 #[cfg(test)]
 use std::str::Utf8Error;
@@ -71,7 +68,6 @@ struct ParseIntError;
 
 impl Connection {
     #[inline]
-    #[cfg(any(test, target_arch = "wasm32"))]
     pub(super) fn new(tcp_stream: TcpStream) -> Self {
         Self {
             head_length: 0,
@@ -443,6 +439,7 @@ mod test {
         let port = random_port();
         crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            let mut tcp_stream = crate::net::TcpStream::from(tcp_stream);
             tcp_stream
                 .write_all(b"GET / HTTP/1.1\r\nUser-Agent: curl/7.76.1\r\nAccept: */*\r\n\r\n")
                 .unwrap();
@@ -469,6 +466,7 @@ mod test {
         let port = random_port();
         crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            let mut tcp_stream = crate::net::TcpStream::from(tcp_stream);
             tcp_stream.write_all(b"GET / HTTP/1.1\r\n").unwrap();
             for _ in 0..(MAX_REQUEST_HEADERS + 1) {
                 tcp_stream.write_all(b"foo: bar\r\n").unwrap();
@@ -490,13 +488,6 @@ mod test {
         });
     }
 
-    fn clone_tcp_stream(tcp_stream: &TcpStream) -> TcpStream {
-        #[cfg(target_arch = "wasm32")]
-        return tcp_stream.clone();
-        #[cfg(not(target_arch = "wasm32"))]
-        return tcp_stream.try_clone().unwrap();
-    }
-
     #[test]
     fn test_multiple_requests() {
         #[cfg(feature = "logging")]
@@ -504,8 +495,9 @@ mod test {
         let port = random_port();
         crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            let mut tcp_stream = crate::net::TcpStream::from(tcp_stream);
             tcp_stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
-            let mut connection = Connection::new(clone_tcp_stream(&tcp_stream));
+            let mut connection = Connection::new(tcp_stream.try_clone().unwrap());
             let response = connection.next_response().unwrap();
             assert_eq!(response.code, 200);
             tcp_stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();

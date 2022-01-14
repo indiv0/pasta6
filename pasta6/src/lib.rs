@@ -2,6 +2,7 @@ use lunatic::process;
 
 mod app;
 mod http;
+mod net;
 
 #[cfg(target_arch = "wasm32")]
 pub fn run() {
