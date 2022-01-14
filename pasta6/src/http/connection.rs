@@ -2,9 +2,7 @@ use crate::http::Headers;
 use bytes::Bytes;
 #[cfg(target_arch = "wasm32")]
 use lunatic::net::TcpStream;
-#[cfg(test)]
 use std::fmt::{self, Formatter};
-#[cfg(test)]
 use std::io::Read;
 use std::io::{self, Write};
 #[cfg(not(target_arch = "wasm32"))]
@@ -14,7 +12,6 @@ use std::str;
 use std::str::Utf8Error;
 
 // Maximum number of headers allowed in an HTTP response.
-#[cfg(test)]
 const MAX_RESPONSE_HEADERS: usize = 16;
 
 #[cfg_attr(test, derive(Debug))]
@@ -56,28 +53,25 @@ enum BodyLength {
     Known(usize),
 }
 
-#[cfg(test)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 pub(super) struct ResponseError {
-    _kind: ResponseErrorKind,
+    kind: ResponseErrorKind,
     _source: Option<httparse::Error>,
 }
 
-#[cfg(test)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 enum ResponseErrorKind {
     ParseHead,
     ParseInt,
     InvalidMessageFraming,
 }
 
-#[cfg(test)]
 #[cfg_attr(test, derive(Debug))]
 struct ParseIntError;
 
 impl Connection {
     #[inline]
-    #[cfg(test)]
+    #[cfg(any(test, target_arch = "wasm32"))]
     pub(super) fn new(tcp_stream: TcpStream) -> Self {
         Self {
             head_length: 0,
@@ -94,7 +88,6 @@ impl Connection {
     /// with more will result in an error.
     // TODO: should we zero out `buf` every time this method is called?
     #[inline]
-    #[cfg(test)]
     pub(super) fn next_response(&mut self) -> Result<Response, ResponseError>
 where {
         tracing::debug!("connection reading response");
@@ -160,7 +153,7 @@ where {
                                     continue;
                                 } else {
                                     return Err(ResponseError {
-                                        _kind: ResponseErrorKind::InvalidMessageFraming,
+                                        kind: ResponseErrorKind::InvalidMessageFraming,
                                         _source: None,
                                     });
                                 }
@@ -179,7 +172,7 @@ where {
                             // > expected message body length in octets.
                             Some(content_length) => BodyLength::Known(
                                 usize_from_bytes(content_length).map_err(|_e| ResponseError {
-                                    _kind: ResponseErrorKind::ParseInt,
+                                    kind: ResponseErrorKind::ParseInt,
                                     _source: None,
                                 })?,
                             ),
@@ -206,7 +199,7 @@ where {
                 Ok(httparse::Status::Partial) => continue,
                 Err(source) => {
                     return Err(ResponseError {
-                        _kind: ResponseErrorKind::ParseHead,
+                        kind: ResponseErrorKind::ParseHead,
                         _source: Some(source),
                     })
                 }
@@ -327,6 +320,41 @@ impl fmt::Debug for BodyKind<'_> {
     }
 }
 
+impl fmt::Display for ResponseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.kind {
+            ResponseErrorKind::ParseInt => write!(f, "parse integer error"),
+            ResponseErrorKind::ParseHead => write!(f, "parse head error"),
+            ResponseErrorKind::InvalidMessageFraming => write!(f, "invalid message framing"),
+        }
+    }
+}
+
+impl std::error::Error for ResponseError {
+    //fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    //    None
+    //}
+
+    //fn type_id(&self, _: private::Internal) -> std::any::TypeId
+    //where
+    //    Self: 'static,
+    //{
+    //    std::any::TypeId::of::<Self>()
+    //}
+
+    //fn backtrace(&self) -> Option<&std::backtrace::Backtrace> {
+    //    None
+    //}
+
+    //fn description(&self) -> &str {
+    //    "description() is deprecated; use Display"
+    //}
+
+    //fn cause(&self) -> Option<&dyn std::error::Error> {
+    //    self.source()
+    //}
+}
+
 // TODO: would it be better to `io::copy` the response into the `tcp_stream`?
 #[inline]
 pub(super) fn write_response(
@@ -358,7 +386,6 @@ pub(super) fn write_response(
 
 // TODO: use a faster integer parsing method here.
 #[inline]
-#[cfg(test)]
 fn usize_from_bytes(bytes: &[u8]) -> Result<usize, ParseIntError> {
     if bytes.is_empty() {
         return Err(ParseIntError);

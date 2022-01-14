@@ -6,9 +6,11 @@ use lunatic::Mailbox;
 use std::io::{Read, Write};
 use std::{mem, str};
 
+mod client;
 mod connection;
 mod header;
 
+pub(super) use crate::http::client::{Client, ClientError, ClientResult};
 pub(super) use crate::http::connection::Response;
 pub(super) use crate::http::header::Headers;
 
@@ -263,6 +265,14 @@ impl Request<'_> {
     #[inline]
     pub(super) fn body(&self) -> &[u8] {
         self.body
+    }
+}
+
+impl AsRef<str> for Method {
+    fn as_ref(&self) -> &str {
+        match self {
+            Method::Get => "GET",
+        }
     }
 }
 
