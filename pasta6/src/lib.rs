@@ -14,6 +14,20 @@ pub fn run() {
     loop {}
 }
 
+/// Define a wrapper macro for `process::spawn` that initializes our
+/// logger when a process is spawned. Unlike normal Rust applications, the
+/// logger must be re-initialized for every process.
+#[macro_export]
+macro_rules! spawn {
+    ( $function:expr ) => {
+        lunatic::process::spawn(|mailbox| {
+            #[cfg(feature = "logging")]
+            tracing_subscriber::fmt::init();
+            $function(mailbox)
+        })
+    };
+}
+
 /// Define a wrapper macro for `process::spawn_with` that initializes our
 /// logger when a process is spawned. Unlike normal Rust applications, the
 /// logger must be re-initialized for every process.
