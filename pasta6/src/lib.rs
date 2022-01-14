@@ -1,16 +1,10 @@
-use lunatic::{process, Mailbox};
+use lunatic::process;
 
 mod app;
 mod http;
 
 pub fn run() {
-    tracing::info!("starting application");
-    let mailbox = unsafe { Mailbox::new() };
-    let this = process::this(&mailbox);
-    // Run the entire application in a lunatic process because `println!`
-    // doesn't work outside of one.
-    tracing::info!("spawning server process");
-    spawn_with!(this, crate::app::server).unwrap();
+    crate::app::server();
     loop {
         process::sleep(u64::MAX);
     }
