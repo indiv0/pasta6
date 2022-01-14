@@ -247,6 +247,13 @@ impl<'body> Response<'body> {
     }
 }
 
+#[cfg(all(test, not(target_arch = "wasm32")))]
+impl From<Response<'_>> for hyper::Response<hyper::Body> {
+    fn from(response: Response) -> Self {
+        hyper::Response::new(response.body.into())
+    }
+}
+
 impl Body<'_> {
     #[inline]
     fn len(&self) -> BodyLength {
@@ -539,52 +546,12 @@ mod test {
                     .build()
                     .unwrap();
                 rt.block_on(async {
-                    async fn hello_world(
-                        hyper_request: hyper::Request<hyper::Body>,
-                    ) -> hyper::Result<hyper::Response<hyper::Body>> {
-                        let (parts, body) = hyper_request.into_parts();
-                        let body = match hyper::body::to_bytes(body).await {
-                            Ok(buf) => buf,
-                            Err(e) => {
-                                tracing::error!("aggregate error: {}", e);
-                                panic!();
-                            }
-                        };
-                        let request = crate::http::Request {
-                            path: &parts.uri.to_string(),
-                            method: parts.method.as_str().into(),
-                            body: &body[..],
-                        };
-                        let handler = $handler;
-                        let response = handler(&request);
-                        let hyper_response = hyper::Response::new(response.body.into());
-                        Ok(hyper_response)
-                    }
-
-                    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], $port));
-
-                    let make_svc = hyper::service::make_service_fn(|_conn| async {
-                        Ok::<_, std::convert::Infallible>(hyper::service::service_fn(hello_world))
-                    });
-                    let server = hyper::Server::bind(&addr).serve(make_svc);
-                    tracing::info!("server listening on 127.0.0.1:{}", $port);
-
-                    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
-                    let graceful = server.with_graceful_shutdown(async {
-                        rx.await.unwrap();
-                    });
-
-                    let server_join_handle = tokio::spawn(async {
-                        if let Err(e) = graceful.await {
-                            panic!("server error: {}", e);
-                        }
-                    });
-
+                    let (tx, server) = crate::app::server($port).await;
                     let client_join_handle = tokio::task::spawn_blocking(move || $test($port));
                     client_join_handle.await.unwrap();
 
                     tx.send(()).unwrap();
-                    server_join_handle.await.unwrap();
+                    server.await.unwrap();
                 });
             }
         };

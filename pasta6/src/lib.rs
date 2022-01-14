@@ -3,6 +3,7 @@ use lunatic::process;
 mod app;
 mod http;
 
+#[cfg(target_arch = "wasm32")]
 pub fn run() {
     crate::app::server();
     loop {

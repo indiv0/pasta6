@@ -316,3 +316,13 @@ impl ConnectionError {
         }
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+#[inline]
+pub(crate) fn from_parts<'a>(path: &'a str, method: &'a str, body: &'a [u8]) -> Request<'a> {
+    Request {
+        path,
+        method: method.into(),
+        body,
+    }
+}
