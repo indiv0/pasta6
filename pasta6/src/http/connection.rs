@@ -97,7 +97,7 @@ impl Connection {
     #[cfg(test)]
     pub(super) fn next_response(&mut self) -> Result<Response, ResponseError>
 where {
-        tracing::trace!("connection reading response");
+        tracing::debug!("connection reading response");
         // TODO: read until `\r\n\r\n` as that indicates the end of the
         //   response head. Currently we blindly loop and read as much as
         //   possible, then try to parse the response even if we can't
@@ -112,7 +112,7 @@ where {
                     panic!();
                 }
             };
-            tracing::trace!("connection bytes read: {}", bytes_read);
+            tracing::debug!("connection bytes read: {}", bytes_read);
             let response_bytes = &mut self.buf[..bytes_read];
             let lossy_response_str = String::from_utf8_lossy(response_bytes);
             tracing::trace!("connection parsing response: {}", lossy_response_str);
@@ -394,7 +394,7 @@ mod test {
         fn handle<'request, 'response>(
             request: &'request Request<'request>,
         ) -> Response<'response> {
-            tracing::trace!("server handling request");
+            tracing::debug!("server handling request");
             assert_eq!(request.method, Method::Get);
             assert_eq!(request.path, "/");
             assert_eq!(request.body, b"");

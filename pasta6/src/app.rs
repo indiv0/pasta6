@@ -11,7 +11,7 @@ pub(crate) fn server(parent: Process<()>, mailbox: Mailbox<()>) {
 
 impl Handler for App {
     fn handle<'request, 'response>(request: &'request Request<'request>) -> Response<'response> {
-        tracing::trace!("server handling request");
+        tracing::debug!("server handling request");
         assert_eq!(request.method(), Method::Get);
         assert_eq!(request.path(), "/");
         assert_eq!(request.body(), b"");

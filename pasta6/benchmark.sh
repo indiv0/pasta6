@@ -2,7 +2,7 @@
 
 cargo build --release
 cargo build --release --features logging
-RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off cargo run --release --features logging &
+RUST_LOG=trace,pasta6=debug,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off,hyper=off,mio=off cargo run --release --features logging &
 server_pid="$!"
 sleep 0.5
 

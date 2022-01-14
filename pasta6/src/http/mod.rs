@@ -72,7 +72,7 @@ pub(crate) fn server(
     loop {
         match listener.accept() {
             Ok((tcp_stream, peer)) => {
-                tracing::trace!("server accepted connection: {}", peer);
+                tracing::debug!("server accepted connection: {}", peer);
                 match crate::spawn_with!(
                     (tcp_stream, peer, handler_int),
                     |(tcp_stream, peer, handler_int), _mailbox: Mailbox::<()>| {
@@ -84,7 +84,7 @@ pub(crate) fn server(
                         };
                         match handle_connection(tcp_stream, &handler) {
                             Ok(()) => {
-                                tracing::trace!("closed connection: {}", peer);
+                                tracing::debug!("closed connection: {}", peer);
                             }
                             Err(e) => {
                                 tracing::error!("connection error: {:?}", e);
@@ -112,7 +112,7 @@ fn handle_connection(
     mut tcp_stream: TcpStream,
     handler: &for<'r, 's> fn(&'r Request<'s>) -> Response<'r>,
 ) -> Result<(), ConnectionError> {
-    tracing::trace!("server handling connection");
+    tracing::debug!("server handling connection");
     'outer: loop {
         // Allocate a buffer to store request data.
         // TODO: re-use this buffer between requests.
@@ -122,7 +122,7 @@ fn handle_connection(
         // TODO: shrink this buffer after the request is processed?
         let mut buf = vec![0; INIT_REQUEST_BUFFER_SIZE];
         // Read as much data as possible from the TCP stream into the buffer.
-        tracing::trace!("server reading stream");
+        tracing::debug!("server reading stream");
         let mut bytes_read = 0;
         let mut reached_eof = false;
         let request = loop {
@@ -138,7 +138,7 @@ fn handle_connection(
 
             bytes_read += match tcp_stream.read(&mut buf[bytes_read..]) {
                 Ok(0) => {
-                    tracing::trace!("reached EOF");
+                    tracing::debug!("reached EOF");
                     // If we've reached EOF and there are no unparsed bytes,
                     // then the client has closed the connection.
                     if bytes_read == 0 {
@@ -148,11 +148,11 @@ fn handle_connection(
                     bytes_read
                 }
                 Ok(bytes_read) => {
-                    tracing::trace!("server bytes read: {}", bytes_read);
+                    tracing::debug!("server bytes read: {}", bytes_read);
                     bytes_read
                 }
                 Err(e) => {
-                    tracing::trace!("read error: {}", e);
+                    tracing::debug!("read error: {}", e);
                     // If the client dropped the socket without properly
                     // shutting down the TCP connection, then we stop
                     // processing.
@@ -194,7 +194,7 @@ fn handle_connection(
                     // > large.
                     httparse::Error::TooManyHeaders => {
                         let response = Response::from_static(431, "");
-                        tracing::trace!("server writing response");
+                        tracing::debug!("server writing response");
                         match connection::write_response(&mut tcp_stream, response) {
                             Ok(()) => {}
                             Err(e) => {
@@ -202,7 +202,7 @@ fn handle_connection(
                                 panic!()
                             }
                         }
-                        tracing::trace!("server flushing response");
+                        tracing::debug!("server flushing response");
                         match tcp_stream.flush() {
                             Ok(()) => {}
                             Err(e) => {
@@ -219,7 +219,7 @@ fn handle_connection(
                 },
             };
         };
-        tracing::trace!("server total bytes read: {}", bytes_read);
+        tracing::debug!("server total bytes read: {}", bytes_read);
         // Invoke the provided handler function to process the request.
         let response = handler(&request);
         // TODO: what's the proper behaviour if the handler defined these headers?
@@ -233,7 +233,7 @@ fn handle_connection(
         }
         // Send the response back to the client.
         // TODO: investigate perf of multiple `write_all` vs single `write!`.
-        tracing::trace!("server writing response");
+        tracing::debug!("server writing response");
         match connection::write_response(&mut tcp_stream, response) {
             Ok(()) => {}
             Err(e) => {
@@ -241,7 +241,7 @@ fn handle_connection(
                 return Ok(());
             }
         }
-        tracing::trace!("server flushing response");
+        tracing::debug!("server flushing response");
         match tcp_stream.flush() {
             Ok(()) => {}
             Err(e) => {
@@ -250,7 +250,7 @@ fn handle_connection(
             }
         }
     }
-    tracing::trace!("server closing connection");
+    tracing::debug!("server closing connection");
     Ok(())
 }
 
