@@ -5,9 +5,9 @@ all:
 .PHONY: all_
 all_:
 	cargo check
-	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off cargo test --features logging --target aarch64-unknown-linux-gnu
-	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off cargo test --features logging
-	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off cargo run --features logging
+	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off cargo test --features logging --target aarch64-unknown-linux-gnu
+	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off cargo test --features logging
+	RUST_LOG=trace,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off cargo run --features logging
 
 .PHONY: configure
 configure:
