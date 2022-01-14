@@ -135,7 +135,13 @@ where
                 }
                 Err(e) => {
                     tracing::error!("read error: {}", e);
-                    panic!();
+                    // If the client dropped the socket without properly
+                    // shutting down the TCP connection, then we stop
+                    // processing.
+                    // TODO: should we finish processing the currect request
+                    //   before exiting?
+                    debug_assert!(bytes_read == 0);
+                    return Err(ConnectionError::unexpected_eof());
                 }
             };
             // Parse the data into an HTTP request.
@@ -152,9 +158,7 @@ where
                         // TODO: is just returning in the event of an unparsable HTTP
                         //   request head and an unexpected EOF the correct thing to
                         //   do?
-                        return Err(ConnectionError {
-                            _kind: ConnectionErrorKind::UnexpectedEof,
-                        });
+                        return Err(ConnectionError::unexpected_eof());
                     }
                 }
                 ParseResult::Error(e) => match e {
@@ -282,5 +286,14 @@ impl Request<'_> {
             body,
         };
         ParseResult::Ok(request)
+    }
+}
+
+impl ConnectionError {
+    #[inline]
+    fn unexpected_eof() -> Self {
+        Self {
+            _kind: ConnectionErrorKind::UnexpectedEof,
+        }
     }
 }
