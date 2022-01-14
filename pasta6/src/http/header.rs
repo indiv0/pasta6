@@ -52,7 +52,7 @@ impl From<&mut [httparse::Header<'_>]> for Headers {
                     "content-length" => "content-length",
                     "date" => "date",
                     n => {
-                        eprintln!("unsupported header: {}", n);
+                        tracing::error!("unsupported header: {}", n);
                         unimplemented!()
                     }
                 };

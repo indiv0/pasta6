@@ -14,7 +14,7 @@ impl Handler for App {
         &self,
         request: &'request Request<'request>,
     ) -> Response<'response> {
-        println!("server handling request");
+        tracing::trace!("server handling request");
         assert_eq!(request.method(), Method::Get);
         assert_eq!(request.path(), "/");
         assert_eq!(request.body(), b"");

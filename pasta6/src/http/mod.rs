@@ -34,6 +34,17 @@ enum ParseResult<T> {
     Partial,
     Error(httparse::Error),
 }
+
+#[derive(Debug)]
+struct ConnectionError {
+    _kind: ConnectionErrorKind,
+}
+
+#[derive(Debug)]
+enum ConnectionErrorKind {
+    UnexpectedEof,
+}
+
 pub(crate) trait Handler {
     fn handle<'request, 'response>(
         &self,
@@ -46,24 +57,32 @@ pub(crate) fn server<H>((parent, handler, port): (Process<()>, H, u16), _mailbox
 where
     H: Handler,
 {
-    println!("server binding to 127.0.0.1:{}", port);
+    tracing::info!("server binding to 127.0.0.1:{}", port);
     let listener = match TcpListener::bind(format!("127.0.0.1:{}", port)) {
         Ok(listener) => listener,
         Err(e) => {
-            eprintln!("bind error: {}", e);
+            tracing::error!("bind error: {}", e);
             panic!();
         }
     };
     parent.send(());
-    println!("server accepting connections");
+    tracing::info!("server accepting connections");
     loop {
         match listener.accept() {
             Ok((tcp_stream, peer)) => {
-                println!("server accepted connection: {}", peer);
-                handle_connection(tcp_stream, &handler);
+                tracing::trace!("server accepted connection: {}", peer);
+                match handle_connection(tcp_stream, &handler) {
+                    Ok(()) => {
+                        tracing::trace!("closed connection: {}", peer);
+                    }
+                    Err(e) => {
+                        tracing::error!("connection error: {:?}", e);
+                    }
+                }
+                continue;
             }
             Err(e) => {
-                eprintln!("accept error: {}", e);
+                tracing::error!("accept error: {}", e);
                 panic!();
             }
         }
@@ -71,11 +90,11 @@ where
 }
 
 #[inline]
-fn handle_connection<H>(mut tcp_stream: TcpStream, handler: &H)
+fn handle_connection<H>(mut tcp_stream: TcpStream, handler: &H) -> Result<(), ConnectionError>
 where
     H: Handler,
 {
-    println!("server handling connection");
+    tracing::trace!("server handling connection");
     // Allocate a buffer to store request data.
     // TODO: re-use this buffer between requests.
     // TODO: allow non-contiguous buffers to allow re-allocation.
@@ -84,8 +103,9 @@ where
     // TODO: shrink this buffer after the request is processed?
     let mut buf = vec![0; INIT_REQUEST_BUFFER_SIZE];
     // Read as much data as possible from the TCP stream into the buffer.
-    println!("server reading stream");
+    tracing::trace!("server reading stream");
     let mut bytes_read = 0;
+    let mut reached_eof = false;
     let request = loop {
         // If there is no remaining space in the buffer to read into, then
         // we need to grow the buffer.
@@ -98,23 +118,39 @@ where
         }
 
         bytes_read += match tcp_stream.read(&mut buf[bytes_read..]) {
+            Ok(0) => {
+                tracing::trace!("reached EOF");
+                reached_eof = true;
+                bytes_read
+            }
             Ok(bytes_read) => {
-                println!("server bytes read: {}", bytes_read);
+                tracing::trace!("server bytes read: {}", bytes_read);
                 bytes_read
             }
             Err(e) => {
-                eprintln!("read error: {}", e);
+                tracing::error!("read error: {}", e);
                 panic!();
             }
         };
         // Parse the data into an HTTP request.
-        println!(
+        tracing::trace!(
             "server parsing request: {}",
             String::from_utf8_lossy(&buf[..bytes_read])
         );
         match Request::parse(&buf[..bytes_read]) {
             ParseResult::Ok(request) => break request,
-            ParseResult::Partial => continue,
+            ParseResult::Partial => {
+                if !reached_eof {
+                    continue;
+                } else {
+                    // TODO: is just returning in the event of an unparsable HTTP
+                    //   request head and an unexpected EOF the correct thing to
+                    //   do?
+                    return Err(ConnectionError {
+                        _kind: ConnectionErrorKind::UnexpectedEof,
+                    });
+                }
+            }
             ParseResult::Error(e) => match e {
                 // RFC 6585 section 5:
                 // > The 431 status code indicates that the server is
@@ -129,63 +165,64 @@ where
                 // > large.
                 httparse::Error::TooManyHeaders => {
                     let response = Response::from_static(431, "");
-                    println!("server writing response");
+                    tracing::trace!("server writing response");
                     match connection::write_response(&mut tcp_stream, response) {
                         Ok(()) => {}
                         Err(e) => {
-                            eprintln!("write error: {}", e);
+                            tracing::error!("write error: {}", e);
                             panic!()
                         }
                     }
-                    println!("server flushing response");
+                    tracing::trace!("server flushing response");
                     match tcp_stream.flush() {
                         Ok(()) => {}
                         Err(e) => {
-                            eprintln!("flush error: {}", e);
+                            tracing::error!("flush error: {}", e);
                             panic!();
                         }
                     }
-                    println!("server closing connection");
-                    return;
+                    tracing::trace!("server closing connection");
+                    return Ok(());
                 }
                 _ => {
-                    eprintln!("parse error: {}", e);
+                    tracing::error!("parse error: {}", e);
                     panic!()
                 }
             },
         };
     };
-    println!("server total bytes read: {}", bytes_read);
+    tracing::trace!("server total bytes read: {}", bytes_read);
     // Invoke the provided handler function to process the request.
     let response = handler.handle(&request);
     // TODO: what's the proper behaviour if the handler defined these headers?
     if response.headers().get("content-length").is_some() {
-        eprintln!("unexpected header: content-length");
+        tracing::error!("unexpected header: content-length");
         panic!()
     }
     if response.headers().get("date").is_some() {
-        eprintln!("unexpected header: date");
+        tracing::error!("unexpected header: date");
         panic!()
     }
     // Send the response back to the client.
     // TODO: investigate perf of multiple `write_all` vs single `write!`.
-    println!("server writing response");
+    tracing::trace!("server writing response");
     match connection::write_response(&mut tcp_stream, response) {
         Ok(()) => {}
         Err(e) => {
-            eprintln!("write error: {}", e);
+            tracing::error!("write error: {}", e);
             panic!();
         }
     }
-    println!("server flushing response");
+    tracing::trace!("server flushing response");
     match tcp_stream.flush() {
         Ok(()) => {}
         Err(e) => {
-            eprintln!("flush error: {}", e);
+            tracing::error!("flush error: {}", e);
             panic!();
         }
     }
-    println!("server closing connection");
+    tracing::trace!("server closing connection");
+    Ok(())
 }
 
 impl Request<'_> {

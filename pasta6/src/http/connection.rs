@@ -97,7 +97,7 @@ impl Connection {
     #[cfg(test)]
     pub(super) fn next_response(&mut self) -> Result<Response, ResponseError>
 where {
-        println!("connection reading response");
+        tracing::trace!("connection reading response");
         // TODO: read until `\r\n\r\n` as that indicates the end of the
         //   response head. Currently we blindly loop and read as much as
         //   possible, then try to parse the response even if we can't
@@ -108,14 +108,14 @@ where {
             bytes_read += match self.tcp_stream.read(&mut self.buf[bytes_read..]) {
                 Ok(bytes_read) => bytes_read,
                 Err(e) => {
-                    eprintln!("read error: {}", e);
+                    tracing::error!("read error: {}", e);
                     panic!();
                 }
             };
-            println!("connection bytes read: {}", bytes_read);
+            tracing::trace!("connection bytes read: {}", bytes_read);
             let response_bytes = &mut self.buf[..bytes_read];
             let lossy_response_str = String::from_utf8_lossy(response_bytes);
-            println!("connection parsing response: {}", lossy_response_str);
+            tracing::trace!("connection parsing response: {}", lossy_response_str);
 
             // FIXME: start reading the body after the head of the request.
             let mut httparse_headers = [httparse::EMPTY_HEADER; MAX_RESPONSE_HEADERS];
@@ -129,11 +129,11 @@ where {
                     let response_str = match str::from_utf8(response_bytes) {
                         Ok(response_str) => response_str,
                         Err(e) => {
-                            eprintln!("utf-8 error: {}", e);
+                            tracing::error!("utf-8 error: {}", e);
                             panic!();
                         }
                     };
-                    println!("client received response: {}", response_str);
+                    tracing::trace!("client received response: {}", response_str);
 
                     // RFC 7230 section 3.3.3 point 4:
                     // > If a message is received without Transfer-Encoding and with
@@ -395,7 +395,7 @@ mod test {
             &self,
             request: &'request Request<'request>,
         ) -> Response<'response> {
-            println!("server handling request");
+            tracing::trace!("server handling request");
             assert_eq!(request.method, Method::Get);
             assert_eq!(request.path, "/");
             assert_eq!(request.body, b"");
@@ -403,32 +403,36 @@ mod test {
         }
     }
 
-    //#[test]
-    //fn test_hello_world() {
-    //    let port = random_port();
-    //    crate::request!(HelloWorld, port, {
-    //        let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
-    //        tcp_stream
-    //            .write_all(b"GET / HTTP/1.1\r\nUser-Agent: curl/7.76.1\r\nAccept: */*\r\n\r\n")
-    //            .unwrap();
-    //        let mut connection = Connection::new(tcp_stream);
-    //        let response = connection.next_response().unwrap();
-    //        assert_eq!(response.code, 200);
-    //        assert_eq!(response.reason, "OK");
-    //        assert_eq!(response.headers.len(), 2);
-    //        assert_eq!(response.headers.get("content-length"), Some(&b"13"[..]));
-    //        let date = str::from_utf8(response.headers.get("date").unwrap()).unwrap();
-    //        const DATE_REGEX: &str = r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
-    //        assert!(Regex::new(DATE_REGEX).unwrap().is_match(date));
-    //        assert_eq!(
-    //            response.body.to_string().as_ref().map(String::as_str),
-    //            Ok("hello, world!")
-    //        );
-    //    });
-    //}
+    #[test]
+    fn test_hello_world() {
+        #[cfg(feature = "logging")]
+        let _ = tracing_subscriber::fmt::try_init();
+        let port = random_port();
+        crate::request!(HelloWorld, port, |port: u16| {
+            let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            tcp_stream
+                .write_all(b"GET / HTTP/1.1\r\nUser-Agent: curl/7.76.1\r\nAccept: */*\r\n\r\n")
+                .unwrap();
+            let mut connection = Connection::new(tcp_stream);
+            let response = connection.next_response().unwrap();
+            assert_eq!(response.code, 200);
+            assert_eq!(response.reason, "OK");
+            assert_eq!(response.headers.len(), 2);
+            assert_eq!(response.headers.get("content-length"), Some(&b"13"[..]));
+            let date = str::from_utf8(response.headers.get("date").unwrap()).unwrap();
+            const DATE_REGEX: &str = r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
+            assert!(Regex::new(DATE_REGEX).unwrap().is_match(date));
+            assert_eq!(
+                response.body.to_string().as_ref().map(String::as_str),
+                Ok("hello, world!")
+            );
+        });
+    }
 
     #[test]
     fn test_too_many_headers() {
+        #[cfg(feature = "logging")]
+        let _ = tracing_subscriber::fmt::try_init();
         let port = random_port();
         crate::request!(HelloWorld, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
@@ -460,22 +464,21 @@ mod test {
             {
                 let mailbox = unsafe { lunatic::Mailbox::new() };
                 let this = lunatic::process::this(&mailbox);
-                let server = |(parent, port), mailbox| {
-                    let handler = $handler;
-                    crate::http::server((parent, handler, port), mailbox)
-                };
-                let _server_proc = match lunatic::process::spawn_with((this.clone(), $port), server)
-                {
-                    Ok(proc) => proc,
-                    Err(e) => {
-                        eprintln!("process error: {}", e);
-                        panic!();
-                    }
-                };
+                let _server_proc =
+                    match crate::spawn_with!((this.clone(), $port), |(parent, port), mailbox| {
+                        let handler = $handler;
+                        crate::http::server((parent, handler, port), mailbox)
+                    }) {
+                        Ok(proc) => proc,
+                        Err(e) => {
+                            tracing::error!("process error: {}", e);
+                            panic!();
+                        }
+                    };
                 match mailbox.receive() {
                     Ok(()) => {}
                     Err(e) => {
-                        eprintln!("receive error: {}", e);
+                        tracing::error!("receive error: {}", e);
                         panic!();
                     }
                 }
@@ -490,17 +493,17 @@ mod test {
 
                 // Run the entire test in a lunatic process because
                 // `println!` doesn't work outside of one.
-                let _client_proc = match lunatic::process::spawn_with((this, $port), client) {
+                let _client_proc = match crate::spawn_with!((this, $port), client) {
                     Ok(proc) => proc,
                     Err(e) => {
-                        eprintln!("process error: {}", e);
+                        tracing::error!("process error: {}", e);
                         panic!();
                     }
                 };
                 match mailbox.receive() {
                     Ok(()) => {}
                     Err(e) => {
-                        eprintln!("receive error: {}", e);
+                        tracing::error!("receive error: {}", e);
                         panic!();
                     }
                 }
@@ -520,7 +523,7 @@ mod test {
                         let body = match hyper::body::to_bytes(body).await {
                             Ok(buf) => buf,
                             Err(e) => {
-                                eprintln!("aggregate error: {}", e);
+                                tracing::error!("aggregate error: {}", e);
                                 panic!();
                             }
                         };
@@ -541,7 +544,7 @@ mod test {
                         Ok::<_, std::convert::Infallible>(hyper::service::service_fn(hello_world))
                     });
                     let server = hyper::Server::bind(&addr).serve(make_svc);
-                    println!("server listening on 127.0.0.1:{}", $port);
+                    tracing::info!("server listening on 127.0.0.1:{}", $port);
 
                     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
                     let graceful = server.with_graceful_shutdown(async {
