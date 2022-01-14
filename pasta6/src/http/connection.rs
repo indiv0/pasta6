@@ -1,178 +1,32 @@
+use crate::http::Headers;
 use bytes::Bytes;
-use lunatic::net::{TcpListener, TcpStream};
-use lunatic::process::Process;
-use lunatic::Mailbox;
-use std::io::{Read, Write};
+#[cfg(target_arch = "wasm32")]
+use lunatic::net::TcpStream;
+#[cfg(test)]
+use std::fmt::{self, Formatter};
+#[cfg(test)]
+use std::io::Read;
+use std::io::{self, Write};
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::TcpStream;
 use std::str;
+#[cfg(test)]
+use std::str::Utf8Error;
 
-#[inline]
-pub(crate) fn server<H>((parent, handler): (Process<()>, H), _mailbox: Mailbox<()>)
-where
-    H: Handler,
-{
-    println!("server binding to 127.0.0.1:3000");
-    let listener = match TcpListener::bind("127.0.0.1:3000") {
-        Ok(listener) => listener,
-        Err(e) => {
-            eprintln!("bind error: {}", e);
-            panic!();
-        }
-    };
-    parent.send(());
-    println!("server accepting connections");
-    loop {
-        match listener.accept() {
-            Ok((tcp_stream, peer)) => {
-                println!("server accepted connection: {}", peer);
-                handle_connection(tcp_stream, &handler);
-            }
-            Err(e) => {
-                eprintln!("accept error: {}", e);
-                panic!();
-            }
-        }
-    }
-}
+// Maximum number of headers allowed in an HTTP response.
+// TODO: write tests to verify behaviour when too many request or response
+//   headers are provided.
+#[cfg(test)]
+const MAX_RESPONSE_HEADERS: usize = 16;
 
-pub(crate) trait Handler {
-    fn handle<'request, 'response>(
-        &self,
-        request: &'request Request<'request>,
-    ) -> Response<'response>;
-}
-
-#[inline]
-fn handle_connection<H>(mut tcp_stream: TcpStream, handler: &H)
-where
-    H: Handler,
-{
-    println!("server handling connection");
-    // Allocate a buffer to store request data.
-    let mut buf = [0; 1024];
-    // Read as much data as possible from the TCP stream into the buffer.
-    println!("server reading stream");
-    let bytes_read = match tcp_stream.read(&mut buf) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            eprintln!("read error: {}", e);
-            panic!();
-        }
-    };
-    println!("server bytes read: {}", bytes_read);
-    // Parse the data into an HTTP request.
-    println!("server parsing request");
-    let request = match Request::parse(&buf[..bytes_read]) {
-        ParseResult::Ok(request) => request,
-        ParseResult::Partial => unimplemented!(),
-        ParseResult::Error(e) => {
-            eprintln!("parse error: {}", e);
-            panic!();
-        }
-    };
-    // Invoke the provided handler function to process the request.
-    let response = handler.handle(&request);
-    // TODO: what's the proper behaviour if the handler defined these headers?
-    if response.headers.get("content-length").is_some() {
-        eprintln!("unexpected header: content-length");
-        panic!()
-    }
-    if response.headers.get("date").is_some() {
-        eprintln!("unexpected header: date");
-        panic!()
-    }
-    // Send the response back to the client.
-    // TODO: investigate perf of multiple `write_all` vs single `write!`.
-    println!("server writing response");
-    match tcp_stream.write_all(b"HTTP/1.1 ") {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match write!(tcp_stream, "{}", response.code) {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match tcp_stream.write_all(b" ") {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match tcp_stream.write_all(response.reason.as_bytes()) {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match response.body.len() {
-        BodyLength::Known(length) => {
-            match tcp_stream.write_all(b"\r\ncontent-length: ") {
-                Ok(()) => {}
-                Err(e) => {
-                    eprintln!("write error: {}", e);
-                    panic!();
-                }
-            }
-            match write!(tcp_stream, "{}", length) {
-                Ok(()) => {}
-                Err(e) => {
-                    eprintln!("write error: {}", e);
-                    panic!();
-                }
-            }
-        }
-        BodyLength::Unknown => {}
-    }
-    // FIXME: don't hardcode the timestamp here.
-    match tcp_stream.write_all(b"\r\ndate: Fri, 14 Jan 2022 02:28:00 GMT") {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match tcp_stream.write_all(b"\r\n\r\n") {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("write error: {}", e);
-            panic!();
-        }
-    }
-    match response.body.kind {
-        BodyKind::Connection {
-            connection: _,
-            length: _,
-        } => unimplemented!(),
-        BodyKind::Bytes(ref bytes) => match tcp_stream.write_all(bytes) {
-            Ok(()) => {}
-            Err(e) => {
-                eprintln!("write error: {}", e);
-                panic!();
-            }
-        },
-    }
-    println!("server flushing response");
-    match tcp_stream.flush() {
-        Ok(()) => {}
-        Err(e) => {
-            eprintln!("flush error: {}", e);
-            panic!();
-        }
-    }
-    println!("server closing connection");
-}
-
-pub(crate) struct Request<'buf> {
-    method: &'buf str,
-    path: &'buf str,
-    body: &'buf [u8],
+#[cfg_attr(test, derive(Debug))]
+pub(super) struct Connection {
+    #[cfg_attr(not(test), allow(dead_code))]
+    head_length: usize,
+    #[cfg_attr(not(test), allow(dead_code))]
+    buf: [u8; 1024],
+    #[cfg_attr(not(test), allow(dead_code))]
+    tcp_stream: TcpStream,
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -185,25 +39,12 @@ pub(crate) struct Response<'body> {
 }
 
 #[cfg_attr(test, derive(Debug))]
-pub(crate) struct Headers {
-    values: Vec<u8>,
-    parts: Vec<HeaderPart>,
-}
-
-#[cfg_attr(test, derive(Debug))]
-struct HeaderPart {
-    name: &'static str,
-    start: usize,
-    end: usize,
-}
-
-#[cfg_attr(test, derive(Debug))]
-pub(crate) struct Body<'a> {
+pub(super) struct Body<'a> {
     kind: BodyKind<'a>,
 }
 
-#[cfg_attr(test, derive(Debug))]
 enum BodyKind<'a> {
+    #[cfg_attr(not(test), allow(dead_code))]
     Connection {
         connection: &'a mut Connection,
         length: BodyLength,
@@ -211,126 +52,20 @@ enum BodyKind<'a> {
     Bytes(Bytes),
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 #[cfg_attr(test, derive(Debug))]
 enum BodyLength {
     Known(usize),
-    Unknown,
 }
 
-impl Headers {
-    #[inline]
-    pub(crate) fn empty() -> Self {
-        Self {
-            values: vec![],
-            parts: vec![],
-        }
-    }
-
-    #[inline]
-    fn len(&self) -> usize {
-        self.parts.len()
-    }
-
-    #[inline]
-    fn get(&self, name: &'static str) -> Option<&[u8]> {
-        self.parts
-            .iter()
-            .find(|p| p.name == name)
-            .map(|p| &self.values[p.start..p.end])
-    }
-}
-
-impl From<&mut [httparse::Header<'_>]> for Headers {
-    #[inline]
-    fn from(httparse_headers: &mut [httparse::Header<'_>]) -> Self {
-        let values_len = httparse_headers.iter().map(|h| h.value.len()).sum();
-        let mut headers = Headers {
-            values: Vec::with_capacity(values_len),
-            parts: Vec::with_capacity(httparse_headers.len()),
-        };
-        let mut start = 0;
-        httparse_headers
-            .iter()
-            .map(|h| (h.name, h.value))
-            .for_each(|(n, v)| {
-                let name = match n {
-                    "content-length" => "content-length",
-                    "date" => "date",
-                    n => {
-                        eprintln!("unsupported header: {}", n);
-                        unimplemented!()
-                    }
-                };
-                headers.parts.push(HeaderPart {
-                    name,
-                    start,
-                    end: start + v.len(),
-                });
-                start += v.len();
-                headers.values.extend_from_slice(v);
-            });
-        headers
-    }
-}
-
-impl Body<'_> {
-    #[inline]
-    fn len(&self) -> BodyLength {
-        match &self.kind {
-            BodyKind::Connection {
-                connection: _,
-                length,
-            } => length.clone(),
-            BodyKind::Bytes(bytes) => BodyLength::Known(bytes.len()),
-        }
-    }
-}
-
-impl From<&'static [u8]> for Body<'_> {
-    #[inline]
-    fn from(bytes: &'static [u8]) -> Self {
-        Body {
-            kind: BodyKind::Bytes(Bytes::from_static(bytes)),
-        }
-    }
-}
-
-#[cfg(all(test, not(target_arch = "wasm32")))]
-impl Into<hyper::Body> for Body<'static> {
-    #[inline]
-    fn into(self) -> hyper::Body {
-        match self.kind {
-            BodyKind::Connection {
-                connection: _,
-                length: _,
-            } => unimplemented!(),
-            BodyKind::Bytes(bytes) => bytes.into(),
-        }
-    }
-}
-
+#[cfg(test)]
 #[cfg_attr(test, derive(Debug))]
-enum ParseResult<T> {
-    Ok(T),
-    Partial,
-    Error(httparse::Error),
+pub(super) struct ResponseError {
+    _kind: ResponseErrorKind,
+    _source: Option<httparse::Error>,
 }
 
-#[cfg_attr(test, derive(Debug))]
-struct ParseError {
-    source: httparse::Error,
-}
-
-#[cfg_attr(test, derive(Debug))]
-struct ResponseError {
-    kind: ResponseErrorKind,
-    source: Option<httparse::Error>,
-}
-
-#[cfg_attr(test, derive(Debug))]
-struct ParseIntError;
-
+#[cfg(test)]
 #[cfg_attr(test, derive(Debug))]
 enum ResponseErrorKind {
     ParseHead,
@@ -338,72 +73,31 @@ enum ResponseErrorKind {
     InvalidMessageFraming,
 }
 
-impl Request<'_> {
-    #[inline]
-    fn parse(buf: &[u8]) -> ParseResult<Request> {
-        let mut headers = [httparse::EMPTY_HEADER; 0];
-        let mut request = httparse::Request::new(&mut headers);
-        let idx = match request.parse(buf) {
-            Ok(httparse::Status::Complete(idx)) => idx,
-            Ok(httparse::Status::Partial) => return ParseResult::Partial,
-            Err(source) => return ParseResult::Error(source),
-        };
-        let body = match buf.get(idx..) {
-            Some(body) => body,
-            None => return ParseResult::Partial,
-        };
-        debug_assert!(request.path.is_some(), "missing path");
-        debug_assert!(request.method.is_some(), "missing method");
-        debug_assert!(request.version.is_some(), "missing version");
-        let request = Request {
-            path: request.path.unwrap(),
-            method: request.method.unwrap(),
-            body,
-        };
-        ParseResult::Ok(request)
-    }
-}
-
-impl<'body> Response<'body> {
-    // FIXME: don't leak `httparse::Header` type.
-    #[inline]
-    pub(crate) fn new(code: u16, headers: Headers, body: Body<'body>) -> Response<'body> {
-        let reason = match code {
-            200 => "OK",
-            _ => unimplemented!(),
-        };
-        Self {
-            code,
-            reason,
-            headers,
-            body,
-        }
-    }
-}
-
-// Maximum number of headers allowed in an HTTP response.
-// TODO: write tests to verify behaviour when too many request or response
-//   headers are provided.
-const MAX_RESPONSE_HEADERS: usize = 16;
-
+#[cfg(test)]
 #[cfg_attr(test, derive(Debug))]
-struct Connection {
-    buf: [u8; 1024],
-    #[cfg(target_arch = "wasm32")]
-    tcp_stream: lunatic::net::TcpStream,
-    #[cfg(not(target_arch = "wasm32"))]
-    tcp_stream: std::net::TcpStream,
-}
+struct ParseIntError;
 
 impl Connection {
+    #[inline]
+    #[cfg(test)]
+    pub(super) fn new(tcp_stream: TcpStream) -> Self {
+        Self {
+            head_length: 0,
+            buf: [0; 1024],
+            tcp_stream,
+        }
+    }
+
     /// Parses a byte slice into an HTTP response.
     ///
     /// # Limitations
     ///
     /// `Response` can parse up to 16 headers. Attempting to parse a response
     /// with more will result in an error.
+    // TODO: should we zero out `buf` every time this method is called?
     #[inline]
-    fn next_response(&mut self) -> Result<Response, ResponseError>
+    #[cfg(test)]
+    pub(super) fn next_response(&mut self) -> Result<Response, ResponseError>
 where {
         println!("connection reading response");
         // TODO: read until `\r\n\r\n` as that indicates the end of the
@@ -429,7 +123,8 @@ where {
             let mut httparse_headers = [httparse::EMPTY_HEADER; MAX_RESPONSE_HEADERS];
             let mut httparse_response = httparse::Response::new(&mut httparse_headers);
             match httparse_response.parse(response_bytes) {
-                Ok(httparse::Status::Complete(_head_length)) => {
+                Ok(httparse::Status::Complete(head_length)) => {
+                    self.head_length = head_length;
                     debug_assert!(httparse_response.code.is_some(), "missing code");
                     debug_assert!(httparse_response.reason.is_some(), "missing reason");
                     debug_assert!(httparse_response.version.is_some(), "missing version");
@@ -467,8 +162,8 @@ where {
                                     continue;
                                 } else {
                                     return Err(ResponseError {
-                                        kind: ResponseErrorKind::InvalidMessageFraming,
-                                        source: None,
+                                        _kind: ResponseErrorKind::InvalidMessageFraming,
+                                        _source: None,
                                     });
                                 }
                             }
@@ -486,8 +181,8 @@ where {
                             // > expected message body length in octets.
                             Some(content_length) => BodyLength::Known(
                                 usize_from_bytes(content_length).map_err(|_e| ResponseError {
-                                    kind: ResponseErrorKind::ParseInt,
-                                    source: None,
+                                    _kind: ResponseErrorKind::ParseInt,
+                                    _source: None,
                                 })?,
                             ),
                             // RFC 7230 section 3.3.3 point 7:
@@ -495,7 +190,7 @@ where {
                             // > message body length, so the message body length is
                             // > determined by the number of octets received prior to the
                             // > server closing the connection.
-                            None => BodyLength::Unknown,
+                            None => unimplemented!(),
                         };
 
                     let code = httparse_response.code.unwrap();
@@ -513,8 +208,8 @@ where {
                 Ok(httparse::Status::Partial) => continue,
                 Err(source) => {
                     return Err(ResponseError {
-                        kind: ResponseErrorKind::ParseHead,
-                        source: Some(source),
+                        _kind: ResponseErrorKind::ParseHead,
+                        _source: Some(source),
                     })
                 }
             };
@@ -522,8 +217,142 @@ where {
     }
 }
 
+impl<'body> Response<'body> {
+    #[inline]
+    pub(crate) fn from_static(code: u16, body: &'static str) -> Response<'body> {
+        Self::new(code, Headers::empty(), body.as_bytes().into())
+    }
+
+    #[inline]
+    pub(super) fn reason(&self) -> &'static str {
+        self.reason
+    }
+
+    #[inline]
+    pub(super) fn headers(&self) -> &Headers {
+        &self.headers
+    }
+
+    #[inline]
+    fn new(code: u16, headers: Headers, body: Body<'body>) -> Response<'body> {
+        let reason = match code {
+            200 => "OK",
+            _ => unimplemented!(),
+        };
+        Self {
+            code,
+            reason,
+            headers,
+            body,
+        }
+    }
+}
+
+impl Body<'_> {
+    #[inline]
+    fn len(&self) -> BodyLength {
+        match &self.kind {
+            BodyKind::Connection {
+                connection: _,
+                length,
+            } => *length,
+            BodyKind::Bytes(bytes) => BodyLength::Known(bytes.len()),
+        }
+    }
+
+    #[inline]
+    #[cfg(test)]
+    fn to_string(&self) -> Result<String, Utf8Error> {
+        match &self.kind {
+            BodyKind::Connection { connection, length } => match length {
+                BodyLength::Known(length) => {
+                    // FIXME: should this be less than or leq?
+                    debug_assert!(connection.head_length + length <= connection.buf.len());
+                    let buf = connection
+                        .buf
+                        .get(connection.head_length..connection.head_length + length);
+                    debug_assert!(buf.is_some());
+                    let buf = buf.unwrap();
+                    let string = str::from_utf8(buf)?.to_string();
+                    Ok(string)
+                }
+            },
+            BodyKind::Bytes(bytes) => Ok(str::from_utf8(&bytes[..])?.to_string()),
+        }
+    }
+}
+
+impl From<&'static [u8]> for Body<'_> {
+    #[inline]
+    fn from(bytes: &'static [u8]) -> Self {
+        Body {
+            kind: BodyKind::Bytes(Bytes::from_static(bytes)),
+        }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+impl From<Body<'_>> for hyper::Body {
+    fn from(body: Body<'_>) -> Self {
+        match body.kind {
+            BodyKind::Connection {
+                connection: _,
+                length: _,
+            } => unimplemented!(),
+            BodyKind::Bytes(bytes) => bytes.into(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl fmt::Debug for BodyKind<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            BodyKind::Connection { connection, length } => match length {
+                BodyLength::Known(length) => {
+                    let buf =
+                        &connection.buf[connection.head_length..connection.head_length + length];
+                    let string = String::from_utf8_lossy(buf);
+                    write!(f, "{}", string)
+                }
+            },
+            BodyKind::Bytes(bytes) => write!(f, "{}", String::from_utf8_lossy(bytes)),
+        }
+    }
+}
+
+// TODO: would it be better to `io::copy` the response into the `tcp_stream`?
+#[inline]
+pub(super) fn write_response(
+    tcp_stream: &mut lunatic::net::TcpStream,
+    response: Response,
+) -> Result<(), io::Error> {
+    tcp_stream.write_all(b"HTTP/1.1 ")?;
+    write!(tcp_stream, "{}", response.code)?;
+    tcp_stream.write_all(b" ")?;
+    tcp_stream.write_all(response.reason().as_bytes())?;
+    match response.body.len() {
+        BodyLength::Known(length) => {
+            tcp_stream.write_all(b"\r\ncontent-length: ")?;
+            write!(tcp_stream, "{}", length)?;
+        }
+    }
+    // FIXME: don't hardcode the timestamp here.
+    tcp_stream.write_all(b"\r\ndate: Fri, 14 Jan 2022 02:28:00 GMT")?;
+    tcp_stream.write_all(b"\r\n\r\n")?;
+    match response.body.kind {
+        BodyKind::Connection {
+            connection: _,
+            length: _,
+        } => unimplemented!(),
+        BodyKind::Bytes(ref bytes) => tcp_stream.write_all(bytes)?,
+    }
+    Ok(())
+}
+
 // TODO: use a faster integer parsing method here.
 #[inline]
+#[cfg(test)]
 fn usize_from_bytes(bytes: &[u8]) -> Result<usize, ParseIntError> {
     if bytes.is_empty() {
         return Err(ParseIntError);
@@ -549,7 +378,7 @@ fn usize_from_bytes(bytes: &[u8]) -> Result<usize, ParseIntError> {
 
 #[cfg(test)]
 mod test {
-    use crate::http::{Headers, Response};
+    use crate::http::{Headers, Method, Response};
     use regex::Regex;
 
     #[test]
@@ -567,7 +396,7 @@ mod test {
                         request: &'request crate::http::Request<'request>,
                     ) -> crate::http::Response<'response> {
                         println!("server handling request");
-                        assert_eq!(request.method, "GET");
+                        assert_eq!(request.method, Method::Get);
                         assert_eq!(request.path, "/");
                         assert_eq!(request.body, b"");
                         Response::new(200, Headers::empty(), b"hello, world!"[..].into())
@@ -597,10 +426,7 @@ mod test {
                     }
                 }
                 println!("client reading response");
-                let mut connection = Connection {
-                    tcp_stream,
-                    buf: [0; 1024],
-                };
+                let mut connection = Connection::new(tcp_stream);
                 println!("client reading response");
                 let response = match connection.next_response() {
                     Ok(response) => response,
@@ -635,6 +461,11 @@ mod test {
                         panic!();
                     }
                 }
+                assert_eq!(
+                    response.body.to_string().as_ref().map(String::as_str),
+                    Ok("hello, world!")
+                );
+
                 let response_bytes = &connection.buf[..89];
                 let response_str = match str::from_utf8(response_bytes) {
                     Ok(response_str) => response_str,
@@ -740,7 +571,7 @@ mod test {
                         };
                         let request = crate::http::Request {
                             path: &parts.uri.to_string(),
-                            method: parts.method.as_str(),
+                            method: parts.method.as_str().into(),
                             body: &body[..],
                         };
                         let handler = $handler;
@@ -778,62 +609,3 @@ mod test {
         };
     }
 }
-
-//#[cfg(all(target_arch = "aarch64", test))]
-//mod test_aarch64 {
-//    use hyper::service::{make_service_fn, service_fn};
-//    use hyper::{Body, Request, Response, Result, Server};
-//    use regex::Regex;
-//    use std::convert::Infallible;
-//    use std::net::SocketAddr;
-//    use tokio::runtime::Builder;
-//    use tokio::sync::oneshot;
-//
-//    #[test]
-//    fn test() {
-//        let rt = Builder::new_current_thread().enable_io().build().unwrap();
-//        rt.block_on(async {
-//            async fn hello_world(_req: Request<Body>) -> Result<Response<Body>> {
-//                Ok(Response::new("hello, world!".into()))
-//            }
-//
-//            let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-//
-//            let make_svc =
-//                make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(hello_world)) });
-//            let server = Server::bind(&addr).serve(make_svc);
-//            println!("server listening on http://127.0.0.1:3000");
-//
-//            let (tx, rx) = oneshot::channel::<()>();
-//            let graceful = server.with_graceful_shutdown(async {
-//                rx.await.unwrap();
-//            });
-//
-//            let server_join_handle = tokio::spawn(async {
-//                if let Err(e) = graceful.await {
-//                    panic!("server error: {}", e);
-//                }
-//            });
-//
-//            let client_join_handle = tokio::task::spawn_blocking(|| {
-//                println!("client requesting GET http://127.0.0.1:3000");
-//                let response = ureq::get("http://127.0.0.1:3000").call().unwrap();
-//                assert_eq!(response.get_url(), "http://127.0.0.1:3000/");
-//                assert_eq!(response.http_version(), "HTTP/1.1");
-//                assert_eq!(response.status(), 200);
-//                assert_eq!(response.status_text(), "OK");
-//                assert_eq!(response.headers_names(), vec!["content-length", "date"]);
-//                assert_eq!(response.header("content-length").unwrap(), "13");
-//                let re = Regex::new(r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT").unwrap();
-//                assert!(re.is_match(response.header("date").unwrap()));
-//                assert_eq!(response.content_type(), "text/plain");
-//                assert_eq!(response.charset(), "utf-8");
-//                assert_eq!(response.into_string().unwrap(), "hello, world!");
-//            });
-//            client_join_handle.await.unwrap();
-//
-//            tx.send(()).unwrap();
-//            server_join_handle.await.unwrap();
-//        });
-//    }
-//}

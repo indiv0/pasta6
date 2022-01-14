@@ -1,5 +1,3 @@
-#![feature(maybe_uninit_uninit_array)]
-
 use lunatic::{process, Mailbox};
 
 mod app;

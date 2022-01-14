@@ -3,7 +3,7 @@
 ## Install the `lunatic` runtime
 
 ```
-# Switch to nightly toolchain to provide nightly-only features.
+# Switch to nightly toolchain for latest improvements to rustc.
 rustup default nightly
 # Add wasm32 compilation target to be able to compile your lunatic program.
 rustup target add wasm32-wasi
