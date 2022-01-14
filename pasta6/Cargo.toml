@@ -14,7 +14,8 @@ path = "src/lib.rs"
 [dependencies]
 
 httparse = { version = "1.5.1", default-features = false, features = ["std"] }
-memchr = { version = "2.4.1", default-features = false, features = ["std"] }
+bytes = { version = "1.1.0", default-features = false }
+#memchr = { version = "2.4.1", default-features = false, features = ["std"] }
 #actix-multipart = { version = "0.4.0-beta.6", default-features = false }
 #actix-web = { version = "4.0.0-beta.19", default-features = false }
 #deadpool-postgres = { version = "0.10.1", default-features = false }
@@ -23,7 +24,7 @@ memchr = { version = "2.4.1", default-features = false, features = ["std"] }
 lunatic = { version = "0.7.1", default-features = false }
 
 [dev-dependencies]
-regex = { version = "1.5.4", default-features = false, features = ["std", "unicode-perl"] }
+regex = { version = "1.5.4", default-features = false, features = ["std", "unicode-gencat", "perf"] }
 
 [target.'cfg(target_arch = "aarch64")'.dev-dependencies]
 hyper = { version = "0.14.16", default-features = false, features = ["http1", "server", "tcp"] }

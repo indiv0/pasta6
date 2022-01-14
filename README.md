@@ -3,9 +3,8 @@
 ## Install the `lunatic` runtime
 
 ```
-# Switch to stable toolchain since nightly ICEs when compiling cranelift.
-# See: https://github.com/rust-lang/rust/issues/92757
-rustup default stable
+# Switch to nightly toolchain to provide nightly-only features.
+rustup default nightly
 # Add wasm32 compilation target to be able to compile your lunatic program.
 rustup target add wasm32-wasi
 # Clone the lunatic repository.
@@ -32,6 +31,16 @@ cargo run
 cargo install cargo-wasi
 # Run the tests in `wasm32-wasi`.
 cargo wasi test
+```
+
+## Updating toolchain with `rustup`
+
+When updating your toolchain with rustup, make sure you update both the
+toolchain and your target:
+
+```
+rustup update nightly
+rustup target add wasm32-wasi
 ```
 
 ## Profiling
