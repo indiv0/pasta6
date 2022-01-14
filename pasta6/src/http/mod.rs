@@ -4,7 +4,7 @@ use lunatic::net::{TcpListener, TcpStream};
 use lunatic::process::Process;
 use lunatic::Mailbox;
 use std::io::{Read, Write};
-use std::str;
+use std::{mem, str};
 
 mod connection;
 mod header;
@@ -46,17 +46,18 @@ enum ConnectionErrorKind {
 }
 
 pub(crate) trait Handler {
-    fn handle<'request, 'response>(
-        &self,
-        request: &'request Request<'request>,
-    ) -> Response<'response>;
+    fn handle<'request, 'response>(request: &'request Request<'request>) -> Response<'response>;
 }
 
 #[inline]
-pub(crate) fn server<H>((parent, handler, port): (Process<()>, H, u16), _mailbox: Mailbox<()>)
-where
-    H: Handler,
-{
+pub(crate) fn server(
+    (parent, handler, port): (
+        Process<()>,
+        for<'r, 's> fn(&'r Request<'s>) -> Response<'r>,
+        u16,
+    ),
+    _mailbox: Mailbox<()>,
+) {
     tracing::info!("server binding to 127.0.0.1:{}", port);
     let listener = match TcpListener::bind(format!("127.0.0.1:{}", port)) {
         Ok(listener) => listener,
@@ -67,19 +68,36 @@ where
     };
     parent.send(());
     tracing::info!("server accepting connections");
+    let handler_int = handler as *const () as usize;
     loop {
         match listener.accept() {
             Ok((tcp_stream, peer)) => {
                 tracing::trace!("server accepted connection: {}", peer);
-                match handle_connection(tcp_stream, &handler) {
-                    Ok(()) => {
-                        tracing::trace!("closed connection: {}", peer);
+                match crate::spawn_with!(
+                    (tcp_stream, peer, handler_int),
+                    |(tcp_stream, peer, handler_int), _mailbox: Mailbox::<()>| {
+                        let handler = unsafe {
+                            let pointer = handler_int as *const ();
+                            mem::transmute::<*const (), for<'r> fn(&'r Request) -> Response<'r>>(
+                                pointer,
+                            )
+                        };
+                        match handle_connection(tcp_stream, &handler) {
+                            Ok(()) => {
+                                tracing::trace!("closed connection: {}", peer);
+                            }
+                            Err(e) => {
+                                tracing::error!("connection error: {:?}", e);
+                            }
+                        }
                     }
+                ) {
+                    Ok(_proc) => {}
                     Err(e) => {
-                        tracing::error!("connection error: {:?}", e);
+                        tracing::error!("process error: {}", e);
+                        panic!();
                     }
-                }
-                continue;
+                };
             }
             Err(e) => {
                 tracing::error!("accept error: {}", e);
@@ -90,10 +108,10 @@ where
 }
 
 #[inline]
-fn handle_connection<H>(mut tcp_stream: TcpStream, handler: &H) -> Result<(), ConnectionError>
-where
-    H: Handler,
-{
+fn handle_connection(
+    mut tcp_stream: TcpStream,
+    handler: &for<'r, 's> fn(&'r Request<'s>) -> Response<'r>,
+) -> Result<(), ConnectionError> {
     tracing::trace!("server handling connection");
     'outer: loop {
         // Allocate a buffer to store request data.
@@ -134,7 +152,7 @@ where
                     bytes_read
                 }
                 Err(e) => {
-                    tracing::error!("read error: {}", e);
+                    tracing::trace!("read error: {}", e);
                     // If the client dropped the socket without properly
                     // shutting down the TCP connection, then we stop
                     // processing.
@@ -202,7 +220,7 @@ where
         };
         tracing::trace!("server total bytes read: {}", bytes_read);
         // Invoke the provided handler function to process the request.
-        let response = handler.handle(&request);
+        let response = handler(&request);
         // TODO: what's the proper behaviour if the handler defined these headers?
         if response.headers().get("content-length").is_some() {
             tracing::error!("unexpected header: content-length");

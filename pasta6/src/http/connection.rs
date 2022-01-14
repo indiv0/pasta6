@@ -392,7 +392,6 @@ mod test {
 
     impl Handler for HelloWorld {
         fn handle<'request, 'response>(
-            &self,
             request: &'request Request<'request>,
         ) -> Response<'response> {
             tracing::trace!("server handling request");
@@ -408,7 +407,7 @@ mod test {
         #[cfg(feature = "logging")]
         let _ = tracing_subscriber::fmt::try_init();
         let port = random_port();
-        crate::request!(HelloWorld, port, |port: u16| {
+        crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
             tcp_stream
                 .write_all(b"GET / HTTP/1.1\r\nUser-Agent: curl/7.76.1\r\nAccept: */*\r\n\r\n")
@@ -434,7 +433,7 @@ mod test {
         #[cfg(feature = "logging")]
         let _ = tracing_subscriber::fmt::try_init();
         let port = random_port();
-        crate::request!(HelloWorld, port, |port: u16| {
+        crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
             tcp_stream.write_all(b"GET / HTTP/1.1\r\n").unwrap();
             for _ in 0..(MAX_REQUEST_HEADERS + 1) {
@@ -469,7 +468,7 @@ mod test {
         #[cfg(feature = "logging")]
         let _ = tracing_subscriber::fmt::try_init();
         let port = random_port();
-        crate::request!(HelloWorld, port, |port: u16| {
+        crate::request!(HelloWorld::handle, port, |port: u16| {
             let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
             tcp_stream.write_all(b"GET / HTTP/1.1\r\n\r\n").unwrap();
             let mut connection = Connection::new(clone_tcp_stream(&tcp_stream));
@@ -557,7 +556,7 @@ mod test {
                             body: &body[..],
                         };
                         let handler = $handler;
-                        let response = crate::http::Handler::handle(&handler, &request);
+                        let response = handler(&request);
                         let hyper_response = hyper::Response::new(response.body.into());
                         Ok(hyper_response)
                     }
