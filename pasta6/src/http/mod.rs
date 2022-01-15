@@ -52,6 +52,21 @@ pub(crate) trait Handler {
 }
 
 #[inline]
+pub(crate) fn handler_as_int(handler: for<'r, 's> fn(&'r Request<'s>) -> Response<'r>) -> usize {
+    handler as *const () as usize
+}
+
+#[inline]
+pub(crate) fn handler_from_int(
+    handler_int: usize,
+) -> for<'r, 's> fn(&'r Request<'s>) -> Response<'r> {
+    unsafe {
+        let pointer = handler_int as *const ();
+        mem::transmute::<*const (), for<'r> fn(&'r Request) -> Response<'r>>(pointer)
+    }
+}
+
+#[inline]
 pub(crate) fn server(
     (parent, handler, port): (
         Process<()>,
@@ -70,7 +85,7 @@ pub(crate) fn server(
     };
     parent.send(());
     tracing::info!("server accepting connections");
-    let handler_int = handler as *const () as usize;
+    let handler_int = handler_as_int(handler);
     loop {
         match listener.accept() {
             Ok((tcp_stream, peer)) => {
@@ -78,12 +93,7 @@ pub(crate) fn server(
                 match crate::spawn_with!(
                     (tcp_stream, peer, handler_int),
                     |(tcp_stream, peer, handler_int), _mailbox: Mailbox::<()>| {
-                        let handler = unsafe {
-                            let pointer = handler_int as *const ();
-                            mem::transmute::<*const (), for<'r> fn(&'r Request) -> Response<'r>>(
-                                pointer,
-                            )
-                        };
+                        let handler = handler_from_int(handler_int);
                         match handle_connection(tcp_stream, &handler) {
                             Ok(()) => {
                                 tracing::debug!("closed connection: {}", peer);

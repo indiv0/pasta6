@@ -86,7 +86,7 @@ impl Connection {
     #[inline]
     pub(super) fn next_response(&mut self) -> Result<Response, ResponseError>
 where {
-        tracing::debug!("connection reading response");
+        tracing::trace!("connection reading response");
         // TODO: read until `\r\n\r\n` as that indicates the end of the
         //   response head. Currently we blindly loop and read as much as
         //   possible, then try to parse the response even if we can't
@@ -101,7 +101,7 @@ where {
                     panic!();
                 }
             };
-            tracing::debug!("connection bytes read: {}", bytes_read);
+            tracing::trace!("connection bytes read: {}", bytes_read);
             let response_bytes = &mut self.buf[..bytes_read];
             let lossy_response_str = String::from_utf8_lossy(response_bytes);
             tracing::trace!("connection parsing response: {}", lossy_response_str);
@@ -146,6 +146,7 @@ where {
                         if name == "content-length" {
                             if let Some(content_length) = content_length {
                                 if content_length == value {
+                                    tracing::warn!("duplicate content-length header");
                                     continue;
                                 } else {
                                     return Err(ResponseError {
@@ -160,25 +161,27 @@ where {
                     if has_transfer_encoding {
                         unimplemented!()
                     }
-                    let body_length =
-                        match content_length {
-                            // RFC 7230 section 3.3.3 point 5:
-                            // > If a valid Content-Length header field is present
-                            // > without Transfer-Encoding, its decimal value defines the
-                            // > expected message body length in octets.
-                            Some(content_length) => BodyLength::Known(
+                    let body_length = match content_length {
+                        // RFC 7230 section 3.3.3 point 5:
+                        // > If a valid Content-Length header field is present
+                        // > without Transfer-Encoding, its decimal value defines the
+                        // > expected message body length in octets.
+                        Some(content_length) => {
+                            let content_length =
                                 usize_from_bytes(content_length).map_err(|_e| ResponseError {
                                     kind: ResponseErrorKind::ParseInt,
                                     _source: None,
-                                })?,
-                            ),
-                            // RFC 7230 section 3.3.3 point 7:
-                            // > Otherwise, this is a response message without a declared
-                            // > message body length, so the message body length is
-                            // > determined by the number of octets received prior to the
-                            // > server closing the connection.
-                            None => unimplemented!(),
-                        };
+                                })?;
+                            tracing::trace!("response content-length: {}", content_length);
+                            BodyLength::Known(content_length)
+                        }
+                        // RFC 7230 section 3.3.3 point 7:
+                        // > Otherwise, this is a response message without a declared
+                        // > message body length, so the message body length is
+                        // > determined by the number of octets received prior to the
+                        // > server closing the connection.
+                        None => unimplemented!(),
+                    };
 
                     let code = httparse_response.code.unwrap();
                     let headers = httparse_response.headers.into();
@@ -407,7 +410,7 @@ mod test {
         fn handle<'request, 'response>(
             request: &'request Request<'request>,
         ) -> Response<'response> {
-            tracing::debug!("server handling request");
+            tracing::debug!("HelloWorld server handling request");
             assert_eq!(request.method, Method::Get);
             assert_eq!(request.path, "/");
             assert_eq!(request.body, b"");
@@ -421,7 +424,8 @@ mod test {
         let _ = tracing_subscriber::fmt::try_init();
         let port = random_port();
         crate::request!(HelloWorld::handle, port, |port: u16| {
-            let mut tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
+            tracing::debug!("connecting to 127.0.0.1:{}", port);
+            let tcp_stream = TcpStream::connect(format!("127.0.0.1:{}", port)).unwrap();
             let mut tcp_stream = crate::net::TcpStream::from(tcp_stream);
             tcp_stream
                 .write_all(b"GET / HTTP/1.1\r\nUser-Agent: curl/7.76.1\r\nAccept: */*\r\n\r\n")
@@ -431,7 +435,10 @@ mod test {
             assert_eq!(response.code, 200);
             assert_eq!(response.reason, "OK");
             assert_eq!(response.headers.len(), 2);
-            assert_eq!(response.headers.get("content-length"), Some(&b"13"[..]));
+            assert_eq!(
+                str::from_utf8(response.headers.get("content-length").unwrap()).unwrap(),
+                "13"
+            );
             let date = str::from_utf8(response.headers.get("date").unwrap()).unwrap();
             const DATE_REGEX: &str =
                 r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
@@ -545,18 +552,8 @@ mod test {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_io()
-                    .build()
-                    .unwrap();
-                rt.block_on(async {
-                    let (tx, server) = crate::app::server($port).await;
-                    let client_join_handle = tokio::task::spawn_blocking(move || $test($port));
-                    client_join_handle.await.unwrap();
-
-                    tx.send(()).unwrap();
-                    server.await.unwrap();
-                });
+                let callback = move |port| $test(port);
+                crate::app::server($handler, callback, $port);
             }
         };
     }

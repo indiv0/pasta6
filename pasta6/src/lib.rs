@@ -6,7 +6,9 @@ mod net;
 
 #[cfg(target_arch = "wasm32")]
 pub fn run() {
-    crate::app::server();
+    use crate::http::Handler;
+
+    crate::app::server(crate::app::App::handle);
     loop {
         process::sleep(u64::MAX);
     }
