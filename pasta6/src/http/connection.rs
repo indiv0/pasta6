@@ -211,12 +211,17 @@ impl<'body> Response<'body> {
     }
 
     #[inline]
-    pub(super) fn reason(&self) -> &'static str {
+    pub(crate) fn code(&self) -> u16 {
+        self.code
+    }
+
+    #[inline]
+    pub(crate) fn reason(&self) -> &'static str {
         self.reason
     }
 
     #[inline]
-    pub(super) fn headers(&self) -> &Headers {
+    pub(crate) fn headers(&self) -> &Headers {
         &self.headers
     }
 
@@ -238,6 +243,7 @@ impl<'body> Response<'body> {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 impl From<Response<'_>> for hyper::Response<hyper::Body> {
+    #[inline]
     fn from(response: Response) -> Self {
         hyper::Response::new(response.body.into())
     }
@@ -326,30 +332,7 @@ impl fmt::Display for ResponseError {
     }
 }
 
-impl std::error::Error for ResponseError {
-    //fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-    //    None
-    //}
-
-    //fn type_id(&self, _: private::Internal) -> std::any::TypeId
-    //where
-    //    Self: 'static,
-    //{
-    //    std::any::TypeId::of::<Self>()
-    //}
-
-    //fn backtrace(&self) -> Option<&std::backtrace::Backtrace> {
-    //    None
-    //}
-
-    //fn description(&self) -> &str {
-    //    "description() is deprecated; use Display"
-    //}
-
-    //fn cause(&self) -> Option<&dyn std::error::Error> {
-    //    self.source()
-    //}
-}
+impl std::error::Error for ResponseError {}
 
 // TODO: would it be better to `io::copy` the response into the `tcp_stream`?
 #[inline]
@@ -450,7 +433,8 @@ mod test {
             assert_eq!(response.headers.len(), 2);
             assert_eq!(response.headers.get("content-length"), Some(&b"13"[..]));
             let date = str::from_utf8(response.headers.get("date").unwrap()).unwrap();
-            const DATE_REGEX: &str = r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
+            const DATE_REGEX: &str =
+                r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
             assert!(Regex::new(DATE_REGEX).unwrap().is_match(date));
             assert_eq!(
                 response.body.to_string().as_ref().map(String::as_str),
@@ -479,7 +463,8 @@ mod test {
             assert_eq!(response.headers.len(), 2);
             assert_eq!(response.headers.get("content-length"), Some(&b"0"[..]));
             let date = str::from_utf8(response.headers.get("date").unwrap()).unwrap();
-            const DATE_REGEX: &str = r"^Fri, \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
+            const DATE_REGEX: &str =
+                r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} Jan \d{4} \d{2}:\d{2}:\d{2} GMT$";
             assert!(Regex::new(DATE_REGEX).unwrap().is_match(date));
             assert_eq!(
                 response.body.to_string().as_ref().map(String::as_str),

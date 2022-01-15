@@ -22,12 +22,12 @@ impl Headers {
 
     #[inline]
     #[cfg(test)]
-    pub(super) fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.parts.len()
     }
 
     #[inline]
-    pub(super) fn get(&self, name: &'static str) -> Option<&[u8]> {
+    pub(crate) fn get(&self, name: &'static str) -> Option<&[u8]> {
         self.parts
             .iter()
             .find(|p| p.name == name)

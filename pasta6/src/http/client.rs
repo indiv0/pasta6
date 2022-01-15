@@ -26,7 +26,7 @@ impl Client {
     }
 
     #[inline]
-    pub(crate) fn get(&mut self, method: Method, path: &str) -> ClientResult<Response> {
+    pub(crate) fn request(&mut self, method: Method, path: &str) -> ClientResult<Response> {
         write!(
             self.tcp_stream,
             "{} {} HTTP/1.1\r\n\r\n",

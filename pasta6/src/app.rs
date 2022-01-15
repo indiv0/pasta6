@@ -7,6 +7,31 @@ use crate::http::{Handler, Method, Request, Response};
 
 struct App;
 
+impl Handler for App {
+    #[inline]
+    fn handle<'request, 'response>(request: &'request Request<'request>) -> Response<'response> {
+        tracing::debug!("server handling request");
+        match (request.method(), request.path()) {
+            (Method::Get, "/") => {
+                assert_eq!(request.body(), b"");
+                const BODY: &str = "<html>\
+                  <head>\
+                    <title>Home</title>\
+                  </head>\
+                  <body>\
+                  <form method=\"post\" action\"/\" enctype=\"multipart/form-data\">\
+                    <label for=\"content\">TODO:</label>\
+                    <input type=\"text\" name=\"content\" id=\"content\" required>\
+                  </form>\
+                  </body>\
+                  </html>";
+                Response::from_static(200, BODY)
+            }
+            (Method::Get, _path) => Response::from_static(404, ""),
+        }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 #[inline]
 pub(crate) fn server() {
@@ -20,6 +45,8 @@ pub(crate) fn server() {
     // doesn't work outside of one.
     tracing::info!("spawning server process");
     crate::spawn_with!(this, server_).unwrap();
+    // Wait for the server to initialize.
+    mailbox.receive().unwrap();
 }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
@@ -71,49 +98,51 @@ pub(crate) async fn server(
     (tx, server_join_handle)
 }
 
-impl Handler for App {
-    #[inline]
-    fn handle<'request, 'response>(request: &'request Request<'request>) -> Response<'response> {
-        tracing::debug!("server handling request");
-        match (request.method(), request.path()) {
-            (Method::Get, "/") => {
-                assert_eq!(request.body(), b"");
-                Response::from_static(200, "hello, world!")
-            }
-            (Method::Get, _path) => Response::from_static(404, ""),
-        }
+#[cfg(all(test, target_arch = "wasm32"))]
+mod test {
+    use crate::http::{Client, Method};
+
+    #[test]
+    fn test_get() {
+        crate::app::server();
+
+        let tcp_stream = lunatic::net::TcpStream::connect("127.0.0.1:3000")
+            .unwrap()
+            .into();
+        let mut client = Client::new(tcp_stream).unwrap();
+        let response = client.request(Method::Get, "/").unwrap();
+        assert_eq!(response.code(), 200);
+        assert_eq!(response.reason(), "OK");
+        assert_eq!(response.headers().len(), 2);
     }
 }
 
-//#[cfg(all(test, target_arch = "wasm32"))]
-//mod test {
-//    #[test]
-//    fn test_get() {
-//        crate::app::server();
-//    }
-//}
-//
-//#[cfg(all(test, not(target_arch = "wasm32")))]
-//mod test {
-//    #[test]
-//    fn test_get() {
-//        let rt = tokio::runtime::Builder::new_current_thread()
-//            .enable_io()
-//            .build()
-//            .unwrap();
-//        rt.block_on(async {
-//            let (tx, server) = crate::app::server(3000).await;
-//
-//            let client_join_handle = tokio::task::spawn_blocking(move || {
-//                let tcp_stream = std::net::TcpStream::connect("127.0.0.1:3000")
-//                    .unwrap()
-//                    .into();
-//                let client = crate::http::Client::new(tcp_stream).unwrap();
-//            });
-//            client_join_handle.await.unwrap();
-//
-//            tx.send(()).unwrap();
-//            server.await.unwrap();
-//        });
-//    }
-//}
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod test {
+    use crate::http::{Client, Method};
+    #[test]
+    fn test_get() {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let (tx, server) = crate::app::server(3000).await;
+
+            let client_join_handle = tokio::task::spawn_blocking(move || {
+                let tcp_stream = std::net::TcpStream::connect("127.0.0.1:3000")
+                    .unwrap()
+                    .into();
+                let mut client = Client::new(tcp_stream).unwrap();
+                let response = client.request(Method::Get, "/").unwrap();
+                assert_eq!(response.code(), 200);
+                assert_eq!(response.reason(), "OK");
+                assert_eq!(response.headers().len(), 2);
+            });
+            client_join_handle.await.unwrap();
+
+            tx.send(()).unwrap();
+            server.await.unwrap();
+        });
+    }
+}
