@@ -1,7 +1,7 @@
 use crate::http::connection::Connection;
 use crate::http::{Method, Response};
 use crate::net::TcpStream;
-use std::io::{self, Write};
+use std::io::Write;
 
 pub(crate) struct Client {
     tcp_stream: TcpStream,

@@ -13,7 +13,8 @@ impl Handler for App {
         tracing::trace!("App server handling request");
         match (request.method(), request.path()) {
             (Method::Get, "/") => {
-                assert_eq!(request.body(), b"");
+                // FIXME: uncomment
+                //assert_eq!(request.body(), b"");
                 const BODY: &str = "<html>\
                   <head>\
                     <title>Home</title>\
@@ -28,6 +29,16 @@ impl Handler for App {
                 Response::from_static(200, BODY)
             }
             (Method::Post, "/") => {
+                // TODO: remove this log statement.
+                tracing::info!(
+                    "headers: {:?}",
+                    request
+                        .headers()
+                        .iter()
+                        .map(|(n, v)| (n, String::from_utf8_lossy(v)))
+                        .collect::<Vec<_>>()
+                );
+                tracing::info!("body: {}", request.body().to_string().unwrap());
                 unimplemented!();
             }
             (_method, _path) => Response::from_static(404, ""),
@@ -81,7 +92,8 @@ pub(crate) fn server(
                 }
             };
             let uri = parts.uri.to_string();
-            let request = crate::http::from_parts(&uri, parts.method.as_str(), &body);
+            let headers = parts.headers.into();
+            let request = crate::http::from_parts(uri, parts.method.as_str(), headers, &body);
             let response = handler(&request);
             let hyper_response = response.into();
             Ok(hyper_response)

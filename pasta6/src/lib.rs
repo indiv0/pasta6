@@ -1,3 +1,6 @@
+// FIXME: remove this attr
+#![allow(dead_code)]
+
 use lunatic::process;
 
 mod app;
