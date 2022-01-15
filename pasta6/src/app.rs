@@ -27,7 +27,10 @@ impl Handler for App {
                   </html>";
                 Response::from_static(200, BODY)
             }
-            (Method::Get, _path) => Response::from_static(404, ""),
+            (Method::Post, "/") => {
+                unimplemented!();
+            }
+            (_method, _path) => Response::from_static(404, ""),
         }
     }
 }

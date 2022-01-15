@@ -29,6 +29,7 @@ pub(crate) struct Request<'buf> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Method {
     Get,
+    Post,
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -284,6 +285,7 @@ impl AsRef<str> for Method {
     fn as_ref(&self) -> &str {
         match self {
             Method::Get => "GET",
+            Method::Post => "POST",
         }
     }
 }
@@ -294,6 +296,7 @@ impl From<&str> for Method {
     fn from(string: &str) -> Self {
         match string {
             "GET" => Method::Get,
+            "POST" => Method::Post,
             _ => unimplemented!(),
         }
     }
