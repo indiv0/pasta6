@@ -38,7 +38,7 @@ pub(crate) fn server(handler: for<'r, 's> fn(&'r Request<'s>) -> Response<'r>) {
     let handler_int = crate::http::handler_as_int(handler);
     fn server_((parent, handler_int): (Process<()>, usize), mailbox: Mailbox<()>) {
         let handler = crate::http::handler_from_int(handler_int);
-        crate::http::server((parent, handler, 3000), mailbox)
+        crate::http::server((parent, handler, ([0, 0, 0, 0], 3000)), mailbox)
     }
     tracing::info!("starting application");
     let mailbox = unsafe { Mailbox::new() };

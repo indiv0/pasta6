@@ -233,7 +233,10 @@ impl<'body> Response<'body> {
         let reason = match code {
             200 => "OK",
             431 => "Request Header Fields Too Large",
-            _ => unimplemented!(),
+            code => {
+                tracing::error!("unknown status code: {}", code);
+                unimplemented!()
+            }
         };
         Self {
             code,
@@ -505,17 +508,19 @@ mod test {
             {
                 let mailbox = unsafe { lunatic::Mailbox::new() };
                 let this = lunatic::process::this(&mailbox);
-                let _server_proc =
-                    match crate::spawn_with!((this.clone(), $port), |(parent, port), mailbox| {
+                let _server_proc = match crate::spawn_with!(
+                    (this.clone(), ([127, 0, 0, 1], $port)),
+                    |(parent, addr), mailbox| {
                         let handler = $handler;
-                        crate::http::server((parent, handler, port), mailbox)
-                    }) {
-                        Ok(proc) => proc,
-                        Err(e) => {
-                            tracing::error!("process error: {}", e);
-                            panic!();
-                        }
-                    };
+                        crate::http::server((parent, handler, addr), mailbox)
+                    }
+                ) {
+                    Ok(proc) => proc,
+                    Err(e) => {
+                        tracing::error!("process error: {}", e);
+                        panic!();
+                    }
+                };
                 match mailbox.receive() {
                     Ok(()) => {}
                     Err(e) => {

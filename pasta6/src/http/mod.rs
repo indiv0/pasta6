@@ -4,6 +4,7 @@ use lunatic::net::{TcpListener, TcpStream};
 use lunatic::process::Process;
 use lunatic::Mailbox;
 use std::io::{Read, Write};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::{mem, str};
 
 mod client;
@@ -68,15 +69,16 @@ pub(crate) fn handler_from_int(
 
 #[inline]
 pub(crate) fn server(
-    (parent, handler, port): (
+    (parent, handler, (ip, port)): (
         Process<()>,
         for<'r, 's> fn(&'r Request<'s>) -> Response<'r>,
-        u16,
+        ([u8; 4], u16),
     ),
     _mailbox: Mailbox<()>,
 ) {
-    tracing::info!("server binding to 127.0.0.1:{}", port);
-    let listener = match TcpListener::bind(format!("127.0.0.1:{}", port)) {
+    let addr = SocketAddr::from((ip, port));
+    tracing::info!("server binding to {:?}", addr);
+    let listener = match TcpListener::bind(addr) {
         Ok(listener) => listener,
         Err(e) => {
             tracing::error!("bind error: {}", e);
