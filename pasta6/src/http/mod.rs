@@ -124,7 +124,7 @@ fn handle_connection(
     mut tcp_stream: TcpStream,
     handler: &for<'r, 's> fn(&'r Request<'s>) -> Response<'r>,
 ) -> Result<(), ConnectionError> {
-    tracing::debug!("server handling connection");
+    tracing::trace!("server handling connection");
     'outer: loop {
         // Allocate a buffer to store request data.
         // TODO: re-use this buffer between requests.
@@ -134,7 +134,7 @@ fn handle_connection(
         // TODO: shrink this buffer after the request is processed?
         let mut buf = vec![0; INIT_REQUEST_BUFFER_SIZE];
         // Read as much data as possible from the TCP stream into the buffer.
-        tracing::debug!("server reading stream");
+        tracing::trace!("server reading stream");
         let mut bytes_read = 0;
         let mut reached_eof = false;
         let request = loop {
@@ -150,7 +150,7 @@ fn handle_connection(
 
             bytes_read += match tcp_stream.read(&mut buf[bytes_read..]) {
                 Ok(0) => {
-                    tracing::debug!("reached EOF");
+                    tracing::trace!("reached EOF");
                     // If we've reached EOF and there are no unparsed bytes,
                     // then the client has closed the connection.
                     if bytes_read == 0 {
@@ -160,7 +160,7 @@ fn handle_connection(
                     bytes_read
                 }
                 Ok(bytes_read) => {
-                    tracing::debug!("server bytes read: {}", bytes_read);
+                    tracing::trace!("server bytes read: {}", bytes_read);
                     bytes_read
                 }
                 Err(e) => {
@@ -206,7 +206,7 @@ fn handle_connection(
                     // > large.
                     httparse::Error::TooManyHeaders => {
                         let response = Response::from_static(431, "");
-                        tracing::debug!("server writing response");
+                        tracing::trace!("server writing response");
                         match connection::write_response(&mut tcp_stream, response) {
                             Ok(()) => {}
                             Err(e) => {
@@ -214,7 +214,7 @@ fn handle_connection(
                                 panic!()
                             }
                         }
-                        tracing::debug!("server flushing response");
+                        tracing::trace!("server flushing response");
                         match tcp_stream.flush() {
                             Ok(()) => {}
                             Err(e) => {
@@ -231,7 +231,7 @@ fn handle_connection(
                 },
             };
         };
-        tracing::debug!("server total bytes read: {}", bytes_read);
+        tracing::trace!("server total bytes read: {}", bytes_read);
         // Invoke the provided handler function to process the request.
         let response = handler(&request);
         // TODO: what's the proper behaviour if the handler defined these headers?
@@ -245,7 +245,7 @@ fn handle_connection(
         }
         // Send the response back to the client.
         // TODO: investigate perf of multiple `write_all` vs single `write!`.
-        tracing::debug!("server writing response");
+        tracing::trace!("server writing response");
         match connection::write_response(&mut tcp_stream, response) {
             Ok(()) => {}
             Err(e) => {
@@ -253,7 +253,7 @@ fn handle_connection(
                 return Ok(());
             }
         }
-        tracing::debug!("server flushing response");
+        tracing::trace!("server flushing response");
         match tcp_stream.flush() {
             Ok(()) => {}
             Err(e) => {

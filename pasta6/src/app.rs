@@ -10,7 +10,7 @@ pub(crate) struct App;
 impl Handler for App {
     #[inline]
     fn handle<'request, 'response>(request: &'request Request<'request>) -> Response<'response> {
-        tracing::debug!("App server handling request");
+        tracing::trace!("App server handling request");
         match (request.method(), request.path()) {
             (Method::Get, "/") => {
                 assert_eq!(request.body(), b"");
