@@ -1,3 +1,16 @@
+//! HTTP client/server library.
+//!
+//! # RFCs
+//!
+//! - [RFC 2616 (Hypertext Transfer Protocol -- HTTP/1.1)][rfc2616]
+//! - [RFC 6585 (Additional HTTP Status Codes)][rfc6585]
+//! - [RFC 7230 (Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing)][rfc7230]
+//! - [RFC 7231 (Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content)][rfc7231]
+//!
+//! [rfc2616]: https://datatracker.ietf.org/doc/html/rfc2616 "Hypertext Transfer Protocol -- HTTP/1.1"
+//! [rfc6585]: https://datatracker.ietf.org/doc/html/rfc6585 "Additional HTTP Status Codes"
+//! [rfc7230]: https://datatracker.ietf.org/doc/html/rfc7231 "Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing"
+//! [rfc7231]: https://datatracker.ietf.org/doc/html/rfc7231 "Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content"
 use crate::http::connection::Connection;
 use crate::net::TcpStream;
 use lunatic::net::TcpListener;
