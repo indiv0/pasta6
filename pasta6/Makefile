@@ -1,13 +1,16 @@
 .PHONY: all
 all:
-	cargo watch -s "make all_"
-
-.PHONY: all_
-all_:
 	cargo check
 	RUST_LOG=trace,pasta6=debug,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off,hyper=off,mio=off cargo test --features logging --target aarch64-unknown-linux-gnu
 	RUST_LOG=trace,pasta6=debug,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off,hyper=off,mio=off cargo test --features logging
+
+.PHONY: run
+run:
 	RUST_LOG=trace,pasta6=debug,regalloc=off,wasmtime_cranelift=off,cranelift_codegen=off,async_io=off,cranelift_wasm=off,wasi_common=off,polling=off,async_std=off,tracing=off,lunatic_runtime=off,hyper=off,mio=off cargo run --features logging
+
+.PHONY: fuzz
+fuzz:
+	cargo fuzz run fuzz_target_1
 
 .PHONY: configure
 configure:
